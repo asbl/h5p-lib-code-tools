@@ -1,0 +1,26 @@
+{
+  "title": "Code Tools",
+  "description": "Contains various code tools.",
+  "majorVersion": 5,
+  "minorVersion": 15,
+  "patchVersion": 0,
+  "runnable": 0,
+  "coreApi": {
+    "majorVersion": 1,
+    "minorVersion": 12
+  },
+  "author": "Andreas Siebel",
+  "license": "MIT",
+  "machineName": "H5P.LibCodeTools",
+  "preloadedJs": [
+    {
+      "path": "dist/h5p-lib-code-tools.js"
+    }
+  ],
+  "preloadedCss": [
+    {
+      "path": "dist/h5p-lib-code-tools.css"
+    }
+  ]
+
+}
