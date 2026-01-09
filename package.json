@@ -1,5 +1,5 @@
 {
-  "name": "h5p-lib-code-tools",
+  "name": "H5P.LibCodeTools",
   "version": "3.1.2",
   "description": "Code Question Content Type",
   "private": true,
@@ -45,7 +45,16 @@
     "dompurify": "^3.0.6",
     "he": "^1.2.0",
     "highlight.js": "^11.9",
-    "marked": "^9.1.6"
+    "marked": "^9.1.6",
+    "marked-admonition-extension": "^0.0.4",
+    "@codemirror/view": "^6.0.0",
+    "@codemirror/state": "^6.0.0",
+    "@codemirror/commands": "^6.0.0",
+    "@codemirror/lang-javascript": "^6.0.0",
+    "@codemirror/lang-python": "^6.0.0",
+    "@codemirror/lang-markdown": "^6.0.0",
+    "@codemirror/lang-sql": "^6.0.0",
+    "@codemirror/theme-one-dark": "^6.0.0"
   },
   "browserslist": "> 0.5%, last 2 versions, Firefox ESR, not dead"
 }

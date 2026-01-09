@@ -1,8 +1,8 @@
 {
   "title": "Code Tools",
   "description": "Contains various code tools.",
-  "majorVersion": 5,
-  "minorVersion": 15,
+  "majorVersion": 6,
+  "minorVersion": 0,
   "patchVersion": 0,
   "runnable": 0,
   "coreApi": {
