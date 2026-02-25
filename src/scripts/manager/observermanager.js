@@ -1,24 +1,44 @@
-export default class Observermanager {
-  constructor(pageManager, buttonManager) {
-    this.pageManager = pageManager;
-    this.buttonManager = buttonManager;
+/**
+ * Manager class for handling multiple named observers.
+ * @class
+ */
+export default class ObserverManager {
+  constructor() {
+    /** @type {Map<string, BaseObserver>} */
+    this.observers = new Map();
   }
 
-  setupObservers() {
-    const pageCode = this.pageManager.getPage("code");
-    const pageObserver = new MutationObserver(() => {
-      const btn = this.buttonManager.getButton("show_code");
-      if (!btn) return;
+  /**
+   * Registers and starts an observer under a given name.
+   * @param {string} name - Unique observer name.
+   * @param {BaseObserver} observer - Observer to register.
+   */
+  register(name, observer) {
+    if (this.observers.has(name)) {
+      throw new Error(`Observer '${name}' is already registered.`);
+    }
 
-      if (!this.pageManager.pageIsActive("code")) {
-        this.buttonManager.showButton("show_code");
-      } else {
-        this.buttonManager.hideButton("show_code");
-      }
-    });
-    pageObserver.observe(pageCode, {
-      attributes: true,
-      attributeFilter: ["style"],
-    });
+    this.observers.set(name, observer);
+    observer.start();
+  }
+
+  /**
+   * Stops and unregisters a single observer.
+   * @param {string} name - Observer name.
+   */
+  unregister(name) {
+    const observer = this.observers.get(name);
+    if (!observer) return;
+
+    observer.stop();
+    this.observers.delete(name);
+  }
+
+  /**
+   * Stops and removes all observers.
+   */
+  disconnectAll() {
+    this.observers.forEach((observer) => observer.stop());
+    this.observers.clear();
   }
 }

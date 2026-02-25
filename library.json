@@ -2,7 +2,7 @@
   "title": "Code Tools",
   "description": "Contains various code tools.",
   "majorVersion": 6,
-  "minorVersion": 0,
+  "minorVersion": 46,
   "patchVersion": 0,
   "runnable": 0,
   "coreApi": {
@@ -22,5 +22,4 @@
       "path": "dist/h5p-lib-code-tools.css"
     }
   ]
-
 }

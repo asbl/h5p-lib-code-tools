@@ -1,28 +1,29 @@
-// CodeMirrorEditor.js
-import ButtonManager from "./manager/buttonmanager.js";
-import CanvasManager from "./manager/canvasmanager.js";
-import ConsoleManager from "./manager/consolemanager.js";
-import EditorManager from "./manager/editormanager.js";
-import InstructionsManager from "./manager/instructionsmanager.js";
-import Observermanager from "./manager/observermanager.js";
-import PageManager from "./manager/pagemanager.js";
+import ButtonManager from './manager/buttonmanager.js';
+import CanvasManager from './manager/canvasmanager.js';
+import ConsoleManager from './manager/consolemanager.js';
+import EditorManager from './manager/editormanager.js';
+import InstructionsManager from './manager/instructionsmanager.js';
+import Observermanager from './manager/observermanager.js';
+import PageManager from './manager/pagemanager.js';
+import StateManager from './manager/statemanager.js';
+import StorageManager from './manager/storagemanager.js';
+
+
 
 /**
- * CodeMirrorEditor class
- * This is an Advanced CodeMirror Widget with multiple Pages
+ * CodeContainer class
  */
 export default class CodeContainer {
   constructor(parent, options) {
     // Localization labels (run button, etc.)
     this.l10n = options.l10n || {};
-
     // DOM and H5P references
     this.parent = parent;
     this.options = options;
     this.runtimeFactory = options.runtimeFactory || null;
+    this.codingLanguage = options.codingLanguage;
 
     // Editor state flags
-    this.manualSetup = options.manualSetup || false;
     this.evaluation = options.evaluation ?? true;
     this.height = options.height || null;
 
@@ -35,40 +36,58 @@ export default class CodeContainer {
 
     // HTML Elements
     this.containerDiv = null;
-
     // Set CSS class and ID
-    this.parent.classList.add("h5p-cm-editor");
+    this.parent.classList.add('h5p-cm-editor');
     this.parent.id = H5P.createUUID();
 
-    this.resizeAction = options.resizeAction || (() => {});
+    this.resizeActionHandler = options.resizeActionHandler || (() => { });
   }
 
-  getPageManager(parent, options, empty = false) {
-    if (!this.pageManager) {
-      this.pageManager = new PageManager(
+  getStateManager(parent, options) {
+    if (!this._stateManager) {
+      this._stateManager = new StateManager(
+      );
+    }
+    return this._stateManager;
+  }
+
+  getPageManager(empty = false) {
+    if (!this._pageManager) {
+      this._pageManager = new PageManager(
         this.getContainerDiv(),
         this.l10n,
-        this.resizeAction,
+        this.resizeActionHandler,
         empty,
       );
     }
-    return this.pageManager;
+    return this._pageManager;
+  }
+
+  getStorageManager(parent, options) {
+    if (this._storageManager) {
+      return this._storageManager;
+    }
+
+    this._storageManager = new StorageManager(
+      this
+    );
+
+    return this._storageManager;
   }
 
   getButtonManager(parent, options) {
     const hasButtons = options?.hasButtons ?? true;
-    if (this.buttonManager) {
-      return this.buttonManager;
+    if (this._buttonManager) {
+      return this._buttonManager;
     }
 
-    this.buttonManager = new ButtonManager(
+    this._buttonManager = new ButtonManager(
       this.getContainerDiv(),
       hasButtons,
       this.l10n,
-      this.handleButtonAction.bind(this),
     );
 
-    return this.buttonManager;
+    return this._buttonManager;
   }
 
   getInstructionsManager(parent, options) {
@@ -77,82 +96,87 @@ export default class CodeContainer {
     }
     this.instructionsManager = new InstructionsManager(
       options.contentId,
-      options?.instructions || "",
-      options?.instructionsImage || "",
-      this.pageManager,
-      this.buttonManager,
+      options?.instructions || '',
+      options?.instructionsImage || '',
+      this.getPageManager(),
+      this.getButtonManager(),
       this.l10n,
     );
     return this.instructionsManager;
   }
 
   getEditorManager(parent, options) {
-    if (this.editorManager) {
-      return this.editorManager;
-    } else {
+    if (this._editorManager) {
+      return this._editorManager;
+    }
+    else {
       return new EditorManager(
-        options?.code || "",
-        options?.preCode || "",
-        options?.postCode || "",
+        options?.code || '',
+        this.codingLanguage || 'peudocode',
+        options?.preCode || '',
+        options?.postCode || '',
         options?.fixedSize ?? true,
         options?.lines || 5,
         this.editorUID,
         this.preCodeUID,
         this.postCodeUID,
-        options?.onChangeCallback || (() => {}),
+        options?.onChangeCallback || (() => { }),
+        options.resizeActionHandler,
       );
     }
   }
 
   getConsoleManager(parent, options) {
-    if (!this.consoleManager) {
-      this.consoleManager = new ConsoleManager(
+    if (!this._consoleManager) {
+      this._consoleManager = new ConsoleManager(
         options?.hasConsole || true,
         this.consoleUID,
-        options?.consoleType || "textarea",
+        options?.consoleType || 'textarea',
       );
     }
-    return this.consoleManager;
+    return this._consoleManager;
   }
 
   getCanvasManager(parent, options) {
-    return new CanvasManager(
-      options?.hasVisibleCanvas || false,
-      this.getPageManager(parent, options),
-      this.getButtonManager(parent, options),
-    );
+    if (!this._canvasManager) {
+      this._canvasManager = new CanvasManager(
+        options?.hasVisibleCanvas || false,
+        this.getPageManager(parent, options),
+        this.getButtonManager(parent, options),
+      );
+    }
+    return this._canvasManager;
   }
 
-  getObersverManager(parent, options) {
-    return new Observermanager(
-      this.getPageManager(parent, options),
-      this.getButtonManager(parent, options),
-    );
+  getObserverManager() {
+    if (!this._observerManager) {
+      this._observerManager = new Observermanager();
+    }
+    return this._observerManager;
   }
 
   /**
    * Complete setup: editors, pages, buttons, observers
    */
   async setup() {
-    this.pageManager = this.getPageManager(this.parent, this.options);
-    this.buttonManager = this.getButtonManager(this.parent, this.options);
-    this.editorManager = this.getEditorManager(this.parent, this.options);
-    this.consoleManager = this.getConsoleManager(this.parent, this.options);
-    this.canvasManager = this.getCanvasManager(this.parent, this.options);
+    this._pageManager = this.getPageManager();
+    this._buttonManager = this.getButtonManager(this.parent, this.options);
+    this._editorManager = this.getEditorManager(this.parent, this.options);
+    this._consoleManager = this.getConsoleManager(this.parent, this.options);
+    this._canvasManager = this.getCanvasManager(this.parent, this.options);
+    this._stateManager = this.getStateManager();
 
     // Generate HTML structure
 
-    await this.pageManager.setupPages();
-    await this.buttonManager.setupButtons();
+    await this.getPageManager().setupPages();
+    await this._buttonManager.setupButtons();
 
     const dom = this.registerDOM();
     this.parent.appendChild(dom);
 
-    await this.editorManager.setupEditors();
+    await this._editorManager.setupEditors();
     await this.instructionsManager.setupInstructions();
-    await this.canvasManager.setupObservers();
-    await this.pageManager.showPage("code");
-    await this.getObersverManager(this.parent, this.options).setupObservers();
+    this.getPageManager().showPage('code');
   }
 
   /**
@@ -160,7 +184,7 @@ export default class CodeContainer {
    */
   getContainerDiv() {
     if (!this.containerDiv) {
-      this.containerDiv = document.createElement("div");
+      this.containerDiv = document.createElement('div');
       this.containerDiv.id = this.containerUID;
       this.containerDiv.className = `code_container ${this.getContainerClasses()}`;
       return this.containerDiv;
@@ -172,14 +196,15 @@ export default class CodeContainer {
    * Clears console output
    */
   reset() {
-    this.consoleManager.clearConsole();
+    this.getConsoleManager().clearConsole();
   }
 
   /**
    * Run code via H5P runtime
    */
   run() {
-    const runtime = this.runtimeFactory.createManualRuntime(this);
+    const runtime = this.runtimeFactory.create();
+    runtime.setup(this);
     runtime.run();
   }
 
@@ -199,16 +224,17 @@ export default class CodeContainer {
 
   registerDOM() {
     // Navbar + Spinner
-    const nav = document.createElement("nav");
-    nav.className = "navbar";
-
-    const spinner = document.createElement("div");
-    spinner.className = "spinner";
-
     this.containerDiv = this.getContainerDiv();
+    this.containerDiv.innerHTML = '';
 
-    const instructionsDIV = document.createElement("div");
-    instructionsDIV.className = "instructions-container";
+    const nav = document.createElement('nav');
+    nav.className = 'navbar';
+
+    const spinner = document.createElement('div');
+    spinner.className = 'spinner';
+
+    const instructionsDIV = document.createElement('div');
+    instructionsDIV.className = 'instructions-container';
 
     // Instructions
     const instructionsDOM = this.getInstructionsManager(
@@ -222,10 +248,10 @@ export default class CodeContainer {
     this.containerDiv.appendChild(nav);
 
     // Pages-Container
-    const pagesDiv = document.createElement("div");
-    pagesDiv.className = "pages";
+    const pagesDiv = document.createElement('div');
+    pagesDiv.className = 'pages';
 
-    const pagesDOM = this.getPageManager(this.parent, this.options).getDOM();
+    const pagesDOM = this.getPageManager().getDOM();
 
     pagesDiv.appendChild(pagesDOM);
 
@@ -233,9 +259,9 @@ export default class CodeContainer {
     // Editor
     const editorDOM = this.getEditorManager(this.parent, this.options).getDOM();
 
-    const codePage = this.pageManager.getPage("code");
+    const codePage = this.getPageManager().getPage('code');
     if (editorDOM && codePage)
-      this.pageManager.getPage("code").appendChild(editorDOM);
+      this.getPageManager().appendChild('code', editorDOM);
 
     // Buttons
     const buttonsDOM = this.getButtonManager(
@@ -249,35 +275,19 @@ export default class CodeContainer {
       this.parent,
       this.options,
     ).getDOM();
-    if (consoleDOM) this.pageManager.getPage("code").appendChild(consoleDOM);
+    if (consoleDOM) this.getPageManager().appendChild('code', consoleDOM);
 
     this.containerDiv.appendChild(pagesDiv);
 
     this.waitForImages(this.containerDiv).then(() => {
-      this.resizeAction();
+      this.resizeActionHandler();
     });
 
     // Fallback für nicht-Bild-Layouts
-    setTimeout(() => this.resizeAction(), 250);
+    setTimeout(() => this.resizeActionHandler(), 250);
 
     // Hauptcontainer zurückgeben
     return this.containerDiv;
-  }
-
-  handleButtonAction(action, payload) {
-    switch (action) {
-      case "run":
-        this.pageManager.showPage("code");
-        this.run();
-        break;
-
-      case "showPage":
-        this.pageManager.showPage(payload);
-        break;
-
-      default:
-        console.warn("Unknown button action:", action);
-    }
   }
 
   getContainerClasses() {
@@ -285,11 +295,11 @@ export default class CodeContainer {
       this.getButtonManager(this.parent, this.options).getHTMLClasses(),
       this.getConsoleManager(this.parent, this.options).getHTMLClasses(),
       this.getInstructionsManager(this.parent, this.options).getHTMLClasses(),
-    ].join(" ");
+    ].join(' ');
   }
 
   waitForImages(root) {
-    const images = root.querySelectorAll("img");
+    const images = root.querySelectorAll('img');
 
     if (!images.length) {
       return Promise.resolve();
@@ -299,8 +309,8 @@ export default class CodeContainer {
       Array.from(images).map((img) => {
         if (img.complete) return Promise.resolve();
         return new Promise((resolve) => {
-          img.addEventListener("load", resolve, { once: true });
-          img.addEventListener("error", resolve, { once: true });
+          img.addEventListener('load', resolve, { once: true });
+          img.addEventListener('error', resolve, { once: true });
         });
       }),
     );

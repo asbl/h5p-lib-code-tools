@@ -1,11 +1,11 @@
-import { EditorView, keymap, lineNumbers } from "@codemirror/view";
-import { EditorState } from "@codemirror/state";
-import { defaultKeymap } from "@codemirror/commands";
+import { EditorView, keymap, lineNumbers } from '@codemirror/view';
+import { EditorState } from '@codemirror/state';
+import { defaultKeymap } from '@codemirror/commands';
 
-import { javascript } from "@codemirror/lang-javascript";
-import { python } from "@codemirror/lang-python";
-import { markdown } from "@codemirror/lang-markdown";
-import { sql } from "@codemirror/lang-sql";
+import { javascript } from '@codemirror/lang-javascript';
+import { python } from '@codemirror/lang-python';
+import { markdown } from '@codemirror/lang-markdown';
+import { sql } from '@codemirror/lang-sql';
 
 /**
  * Single CodeMirror editor instance wrapper
@@ -14,8 +14,8 @@ export default class CodeMirrorEditorInstance {
   constructor(uid, readonly, content, language, onChangeCallback = () => {}) {
     this.uid = uid;
     this.readonly = readonly ?? false;
-    this.content = content ?? "";
-    this.language = language ?? "python";
+    this.content = content ?? '';
+    this.language = language ?? 'python';
     this.onChangeCallback = onChangeCallback;
     this.view = this.createEditor();
   }
@@ -36,8 +36,8 @@ export default class CodeMirrorEditorInstance {
         EditorView.editable.of(!this.readonly),
         keymap.of([
           ...defaultKeymap,
-          { key: "Ctrl-Enter", run: () => this.run() },
-          { key: "Cmd-Enter", run: () => this.run() },
+          { key: 'Ctrl-Enter', run: () => this.run() },
+          { key: 'Cmd-Enter', run: () => this.run() },
         ]),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) this.handleChange();
@@ -45,23 +45,23 @@ export default class CodeMirrorEditorInstance {
         // Helles Default-Theme
         EditorView.theme(
           {
-            "&": {
-              height: "100%",
-              fontFamily: "monospace",
-              fontSize: "14px",
-              backgroundColor: "#ffffff",
-              color: "#000000",
+            '&': {
+              height: '100%',
+              fontFamily: 'monospace',
+              fontSize: '14px',
+              backgroundColor: '#ffffff',
+              color: '#000000',
             },
-            ".cm-content": {
-              caretColor: "#000000",
+            '.cm-content': {
+              caretColor: '#000000',
             },
-            ".cm-gutters": {
-              backgroundColor: "#f5f5f5",
-              color: "#555555",
-              borderRight: "1px solid #ddd",
+            '.cm-gutters': {
+              backgroundColor: '#f5f5f5',
+              color: '#555555',
+              borderRight: '1px solid #ddd',
             },
-            ".cm-line": {
-              padding: "0 4px",
+            '.cm-line': {
+              padding: '0 4px',
             },
           },
           { dark: false },
@@ -74,13 +74,13 @@ export default class CodeMirrorEditorInstance {
 
   getLanguageExtension() {
     switch (this.language) {
-      case "python":
+      case 'python':
         return python();
-      case "markdown":
+      case 'markdown':
         return markdown();
-      case "sql":
+      case 'sql':
         return sql();
-      case "javascript":
+      case 'javascript':
       default:
         return javascript();
     }

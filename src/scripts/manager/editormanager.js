@@ -1,10 +1,9 @@
-import { lineNumbers } from "@codemirror/view";
-import AceEditorInstance from "../editor/aceeditor-instance";
-import CodeMirrorEditorInstance from "../editor/codemirror-instance";
+import AceEditorInstance from '../editor/aceeditor-instance';
 
 export default class EditorManager {
   constructor(
     code,
+    codingLanguage,
     preCode,
     postCode,
     fixedSize,
@@ -12,34 +11,36 @@ export default class EditorManager {
     editorUID,
     preCodeUID,
     postCodeUID,
-    onChangeCallback = () => {},
+    onChangeCallback = () => { },
+    resizeActionHandler = () => { },
   ) {
     this.showLineNumbers = true;
+    this.codingLanguage = codingLanguage;
     // Code storage
-    this.defaultCode = code ? this.getDecodedCode(code) : "";
-    this.preCode = preCode ? this.getDecodedCode(preCode) : "";
-    this.postCode = postCode ? this.getDecodedCode(postCode) : "";
+    this.defaultCode = code ? this.getDecodedCode(code) : '';
+    this.preCode = preCode ? this.getDecodedCode(preCode) : '';
+    this.postCode = postCode ? this.getDecodedCode(postCode) : '';
 
     this.hasPreCode = this.preCode != null && this.preCode.trim().length > 0;
-    if (this.preCode && !this.preCode.endsWith("\n")) this.preCode += "\n";
+    if (this.preCode && !this.preCode.endsWith('\n')) this.preCode += '\n';
     this.preCodeLines = this.hasPreCode
       ? this.preCode.split(/\r\n|\r|\n/).length - 1
       : 0;
     this.preCodeVisible = this.hasPreCode
-      ? "pre-code-visible"
-      : "pre-code-hidden";
+      ? 'pre-code-visible'
+      : 'pre-code-hidden';
 
-    if (this.postCode && !this.postCode.endsWith("\n"))
+    if (this.postCode && !this.postCode.endsWith('\n'))
       this.postCode = this.postCode.trim();
     this.hasPostCode = this.postCode != null && this.postCode.trim().length > 0;
     this.postCodeLines = this.hasPostCode
       ? this.postCode.split(/\r\n|\r|\n/).length
       : 0;
     this.postCodeVisible = this.hasPostCode
-      ? "post-code-visible"
-      : "post-code-hidden";
+      ? 'post-code-visible'
+      : 'post-code-hidden';
     // Preload code content from options
-    this.lines = this.fixedSize ? options.lines : this.getCodeLines() + 1;
+    this.lines = this.fixedSize ? lines : this.getCodeLines() + 1;
     // Editor instances
     this._mainEditorInstance = null;
     this._preCodeEditorInstance = null;
@@ -52,20 +53,24 @@ export default class EditorManager {
 
     // On Code-Change Callback
     this.onChangeCallback = onChangeCallback;
+
+    this.resizeActionHandler = resizeActionHandler || (() => { });
   }
 
   /**
    * Decodes HTML entities to real characters
+   * @param {string} code A safe-string where special chars are encoded.
+   * @returns {string} A string without special chars
    */
   getDecodedCode(code) {
-    if (!code) return "";
+    if (!code) return '';
     return code
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
       .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-      .replace(/&#039;/g, "'")
-      .replace(/&amp;/g, "&");
+      .replace(/&#39;/g, '\'')
+      .replace(/&#039;/g, '\'')
+      .replace(/&amp;/g, '&');
   }
 
   /**
@@ -76,8 +81,13 @@ export default class EditorManager {
       this._preCodeEditorInstance = new AceEditorInstance(
         this.preCodeUID,
         this.preCode,
-        "python",
-        { firstLine: 1, readonly: true, highlightActiveLine: false },
+        this.codingLanguage,
+        {
+          firstLine: 1,
+          readonly: true,
+          highlightActiveLine: false,
+          resizeActionHandler: this.resizeActionHandler,
+        },
       );
       this._preCodeEditorInstance.createEditor({});
     }
@@ -85,12 +95,13 @@ export default class EditorManager {
     this._mainEditorInstance = new AceEditorInstance(
       this.editorUID,
       this.defaultCode,
-      "python",
+      this.codingLanguage,
       {
         firstLine: this.preCodeLines + 1,
         readonly: false,
         highlightActiveLine: true,
         onChangeCallback: this.onChangeCallback,
+        resizeActionHandler: this.resizeActionHandler,
       },
     );
     this._mainEditorInstance.createEditor();
@@ -98,8 +109,13 @@ export default class EditorManager {
     this._postCodeEditorInstance = new AceEditorInstance(
       this.postCodeUID,
       this.postCode,
-      "python",
-      { showLineNumbers: false, readonly: true, highlightActiveLine: false },
+      this.codingLanguage,
+      {
+        showLineNumbers: false,
+        readonly: true,
+        highlightActiveLine: false,
+        resizeActionHandler: this.resizeActionHandler,
+      },
     );
     if (this.postCodeLines) {
       this._postCodeEditorInstance.createEditor();
@@ -109,47 +125,46 @@ export default class EditorManager {
   getDOM() {
     const fragment = document.createDocumentFragment();
 
-    const wrapper = document.createElement("div");
-    wrapper.className = "page page-code";
+    const wrapper = document.createElement('div');
+    wrapper.className = 'container container-code';
 
-    const preWrapper = document.createElement("div");
+    const preWrapper = document.createElement('div');
     preWrapper.className = `pre_wrapper ${this.preCodeVisible}`;
 
-    const preHeader = document.createElement("div");
+    const preHeader = document.createElement('div');
     preHeader.className =
-      "h5p_code_editor_pre_header code_editor_editor_pre_header";
-    preHeader.textContent = "Pre Code";
+      'h5p_code_editor_pre_header code_editor_editor_pre_header';
+    preHeader.textContent = 'Pre Code';
     preWrapper.appendChild(preHeader);
 
-    const preCode = document.createElement("div");
+    const preCode = document.createElement('div');
     preCode.id = this.preCodeUID;
-    preCode.className = "h5p_code_editor_pre code_editor_pre";
+    preCode.className = 'h5p_code_editor_pre code_editor_pre';
     preCode.style.height = `${this.preCodeLines * 18}px`;
-    preCode.style.width = "100%";
+    preCode.style.width = '100%';
     preCode.classList.add(this.preCodeVisible);
     preWrapper.appendChild(preCode);
 
-    const editor = document.createElement("div");
+    const editor = document.createElement('div');
     editor.id = this.editorUID;
-    editor.className = "h5p_editor_container editor_container";
-    editor.style.height = "100px"; // oder dynamisch nach Bedarf
-    editor.style.width = "100%";
+    editor.className = 'h5p_editor_container editor_container';
+    editor.style.width = '100%';
 
-    const postWrapper = document.createElement("div");
+    const postWrapper = document.createElement('div');
     postWrapper.className = `post_wrapper ${this.postCodeVisible}`;
 
-    const postHeader = document.createElement("div");
+    const postHeader = document.createElement('div');
     postHeader.className =
-      "h5p_code_editor_post_header code_editor_post_header";
-    postHeader.textContent = "Post Code";
+      'h5p_code_editor_post_header code_editor_post_header';
+    postHeader.textContent = 'Post Code';
     postWrapper.appendChild(postHeader);
 
-    const postCode = document.createElement("div");
+    const postCode = document.createElement('div');
     postCode.id = this.postCodeUID;
-    postCode.className = "h5p_code_editor_post code_editor_post";
+    postCode.className = 'h5p_code_editor_post code_editor_post';
     postCode.classList.add(this.postCodeVisible);
     postCode.style.height = `${this.postCodeLines * 18}px`;
-    postCode.style.width = "100%";
+    postCode.style.width = '100%';
     postWrapper.appendChild(postCode);
 
     wrapper.appendChild(preWrapper);
@@ -163,6 +178,7 @@ export default class EditorManager {
 
   /**
    * Returns combined code from pre, main, and post editors
+   * @returns {string} combined code from pre, main, and post editors
    */
   getCode() {
     let code = this._mainEditorInstance.getCode();
@@ -173,8 +189,13 @@ export default class EditorManager {
     return code;
   }
 
+  setCode(code) {
+    this._mainEditorInstance.setCode(code);
+  }
+
   /**
    * Returns the number of lines in the main code
+   * @returns {number} number of lines
    */
   getCodeLines() {
     return this.defaultCode.split(/\r\n|\r|\n/).length;
