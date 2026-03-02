@@ -130,7 +130,7 @@ export default class DialogQueue {
     cfg.confirmButtonText ??= '…continue';
     cfg.allowOutsideClick ??= false;
     cfg.allowEscapeKey ??= false;
-    cfg.showCancelButton ??= false;
+    cfg.showCancelButton ??= true;
 
     // Resolve to `undefined`; callers only need to know that the modal finished.
     return this._enqueue(cfg, opts).then(() => undefined);

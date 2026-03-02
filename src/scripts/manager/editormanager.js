@@ -22,16 +22,18 @@ export default class EditorManager {
     this.postCode = postCode ? this.getDecodedCode(postCode) : '';
 
     this.hasPreCode = this.preCode != null && this.preCode.trim().length > 0;
-    if (this.preCode && !this.preCode.endsWith('\n')) this.preCode += '\n';
+    if (this.preCode) {
+      this.preCode = this.preCode.trimEnd();
+    }
     this.preCodeLines = this.hasPreCode
-      ? this.preCode.split(/\r\n|\r|\n/).length - 1
+      ? this.preCode.split(/\r\n|\r|\n/).length
       : 0;
     this.preCodeVisible = this.hasPreCode
       ? 'pre-code-visible'
       : 'pre-code-hidden';
 
-    if (this.postCode && !this.postCode.endsWith('\n'))
-      this.postCode = this.postCode.trim();
+    if (this.postCode)
+      this.postCode = this.postCode.trimEnd();
     this.hasPostCode = this.postCode != null && this.postCode.trim().length > 0;
     this.postCodeLines = this.hasPostCode
       ? this.postCode.split(/\r\n|\r|\n/).length
@@ -40,7 +42,7 @@ export default class EditorManager {
       ? 'post-code-visible'
       : 'post-code-hidden';
     // Preload code content from options
-    this.lines = this.fixedSize ? lines : this.getCodeLines() + 1;
+    this.lines = this.getCodeLines() + 1;
     // Editor instances
     this._mainEditorInstance = null;
     this._preCodeEditorInstance = null;
@@ -87,6 +89,7 @@ export default class EditorManager {
           readonly: true,
           highlightActiveLine: false,
           resizeActionHandler: this.resizeActionHandler,
+          showLineNumbers: true
         },
       );
       this._preCodeEditorInstance.createEditor({});
@@ -102,6 +105,7 @@ export default class EditorManager {
         highlightActiveLine: true,
         onChangeCallback: this.onChangeCallback,
         resizeActionHandler: this.resizeActionHandler,
+        showLineNumber: true
       },
     );
     this._mainEditorInstance.createEditor();
@@ -111,7 +115,7 @@ export default class EditorManager {
       this.postCode,
       this.codingLanguage,
       {
-        showLineNumbers: false,
+        showLineNumbers: true,
         readonly: true,
         highlightActiveLine: false,
         resizeActionHandler: this.resizeActionHandler,

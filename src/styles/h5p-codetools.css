@@ -108,6 +108,15 @@
   display: none;
 }
 
+.h5p_code_editor_post .ace_gutter-cell{
+  visibility: hidden;
+}
+
+.h5p_code_editor_pre .ace_gutter-active-line,
+.h5p_code_editor_post .ace_gutter-active-line {
+  background-color: inherit;
+}
+
 .code_container .h5p_ace_editor {
   width: 100%;
 }
@@ -260,8 +269,11 @@
   }
 }
 
-
 .code_container  .editor_container {
   resize: vertical;
   overflow: auto;
+}
+
+.admonition {
+  margin: 10px;
 }
