@@ -74,34 +74,19 @@ export default class DialogQueue {
    *   (or `undefined` on timeout/error).
    */
   _enqueue(swalConfig, opts = {}) {
-    const timeout = opts.timeout ?? this.defaultTimeout;
-
     // Append a new step to the queue.
     const next = this._tail.then(
       () =>
         new Promise((resolve) => {
           const swalPromise = Swal.fire(swalConfig);
-          let timerId = null;
-
-          // ----- optional timeout -------------------------------------------------
-          if (timeout > 0) {
-            timerId = setTimeout(() => {
-              Swal.close(); // force‑close the modal
-              resolve(undefined); // resolve due to timeout
-            }, timeout);
-          }
-
           // ----- normal completion (user clicks confirm) ---------------------------
           swalPromise
             .then((result) => {
-              if (timerId) clearTimeout(timerId);
               resolve(result);
             })
             .catch((err) => {
               // Log the error but keep the queue alive.
               console.error('Swal error:', err);
-              if (timerId) clearTimeout(timerId);
-              resolve(undefined);
             });
         })
     );

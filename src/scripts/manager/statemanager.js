@@ -16,7 +16,7 @@ export const STATE_EVENTS = Object.freeze({
 
 export default class StateManager {
   /**
-   * @param {string} initialState
+   * @param {string} initialState default: STOPPED
    */
   constructor(initialState = STATES.STOPPED) {
     if (!Object.values(STATES).includes(initialState)) {
