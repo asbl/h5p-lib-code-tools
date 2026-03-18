@@ -6,9 +6,9 @@ import BaseObserver from './baseobserver';
  */
 export default class PageHideObserver extends BaseObserver {
   constructor(target, callback) {
-    const config = { attributes: true, attributeFilter: ['style'] };
+    const config = { attributes: true, attributeFilter: ['class'] };
     super(target, callback, config);
-    this.wasVisible = target.style.display !== 'none';
+    this.wasVisible = target.classList.contains('active');
   }
 
   createObserver() {
@@ -16,7 +16,7 @@ export default class PageHideObserver extends BaseObserver {
     if (!this.wasVisible) this.callback();
 
     const observer = new MutationObserver(() => {
-      const isVisible = this.target.style.display !== 'none';
+      const isVisible = this.target.classList.contains('active');
       if (!isVisible && this.wasVisible) {
         this.wasVisible = false;
         this.callback();

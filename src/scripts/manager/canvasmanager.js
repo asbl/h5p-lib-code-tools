@@ -10,9 +10,8 @@ export default class CanvasManager {
 
   removeCanvas() {
     if (!this.canvasWrapper) return;
-    // Clear all children from the canvas wrapper (p5, turtle, loading overlay)
-    this.canvasWrapper.innerHTML = '';
-    // Null out references so a fresh wrapper is created on next attachment
+    // Remove from DOM and clear references
+    this.canvasWrapper.remove();
     this.canvasWrapper = null;
     this.canvasDiv = null;
   }
@@ -38,13 +37,15 @@ export default class CanvasManager {
 
   /**
    * Add Canvas
-   * @param canvasWrapper
+   * @param {HTMLElement} canvasWrapper - The canvas wrapper element
+   * @param {string} [type] - Canvas type (optional, for compatibility)
+   * @param {string|number} [identifier] - Canvas identifier (optional, for compatibility)
    */
-  addCanvas(canvasWrapper) {
+  addCanvas(canvasWrapper, type, identifier) {
     this.hasCanvas = true;
     this.canvasWrapper = canvasWrapper;
+    this.canvasDiv = canvasWrapper.querySelector('.canvas-content, .turtle-content, .p5-content');
     this.pageManager.appendChild('canvas', canvasWrapper);
-
   }
 
   /**

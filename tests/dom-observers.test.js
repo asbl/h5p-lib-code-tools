@@ -83,9 +83,8 @@ describe('DOM observer subclasses', () => {
 
   it('fires page show and hide callbacks on visibility changes', async () => {
     const showPage = document.createElement('div');
-    showPage.style.display = 'none';
     const hidePage = document.createElement('div');
-    hidePage.style.display = 'block';
+    hidePage.classList.add('active');
 
     const onShow = vi.fn();
     const onHide = vi.fn();
@@ -95,9 +94,9 @@ describe('DOM observer subclasses', () => {
     showObserver.start();
     hideObserver.start();
 
-    showPage.style.display = 'block';
+    showPage.classList.add('active');
     await waitForObserverTick();
-    hidePage.style.display = 'none';
+    hidePage.classList.remove('active');
     await waitForObserverTick();
 
     expect(onShow).toHaveBeenCalledTimes(1);
