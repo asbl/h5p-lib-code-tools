@@ -66,11 +66,13 @@ export default class EditorManager {
     this.workspaceOptions = {
       enabled: workspaceOptions?.enabled === true,
       entryFileName: workspaceOptions?.entryFileName || 'main.py',
-      entryFileVisible: workspaceOptions?.entryFileVisible !== false,
+      allowAddingFiles: workspaceOptions?.allowAddingFiles === true,
       sourceFiles: Array.isArray(workspaceOptions?.sourceFiles)
         ? workspaceOptions.sourceFiles
         : [],
     };
+    this._fileManagerElement = null;
+    this._isFileManagerActive = false;
     this._defaultWorkspace = this.createDefaultWorkspace();
     this._workspace = this.cloneWorkspace(this._defaultWorkspace);
   }
@@ -124,9 +126,14 @@ export default class EditorManager {
     editor.className = 'h5p_editor_container editor_container';
     editor.style.width = '100%';
     this._editorElement = editor;
-
-    // Append alles
     wrapper.appendChild(editor);
+
+    // File manager panel (hidden by default)
+    const fileManager = document.createElement('div');
+    fileManager.className = 'editor-file-manager';
+    fileManager.hidden = true;
+    this._fileManagerElement = fileManager;
+    wrapper.appendChild(fileManager);
 
     fragment.appendChild(wrapper);
 
@@ -244,7 +251,7 @@ export default class EditorManager {
       {
         name: this.workspaceOptions.entryFileName,
         code: this.defaultCode,
-        visible: this.workspaceOptions.entryFileVisible !== false,
+        visible: true,
         editable: true,
         isEntry: true,
       },
@@ -267,7 +274,7 @@ export default class EditorManager {
   createWorkspaceFromSnapshot(workspace = {}, fallbackWorkspace = null) {
     const fallback = fallbackWorkspace ? this.cloneWorkspace(fallbackWorkspace) : null;
     const entryFileName = workspace?.entryFileName || fallback?.entryFileName || this.workspaceOptions.entryFileName;
-    const entryFileVisible = this.workspaceOptions.entryFileVisible !== false;
+    const entryFileVisible = true;
     const rawFiles = Array.isArray(workspace?.files)
       ? workspace.files
       : fallback?.files || [];
@@ -431,7 +438,10 @@ export default class EditorManager {
     }
 
     const visibleFiles = this.getVisibleFiles();
-    this._tabsElement.hidden = visibleFiles.length <= 1;
+    const allowAddingFiles = this.workspaceOptions.allowAddingFiles === true;
+    const showTabs = visibleFiles.length > 1 || allowAddingFiles;
+
+    this._tabsElement.hidden = !showTabs;
     this._tabsElement.replaceChildren();
 
     visibleFiles.forEach((file) => {
@@ -439,7 +449,7 @@ export default class EditorManager {
       button.type = 'button';
       button.className = 'editor-file-tab';
       button.dataset.fileName = file.name;
-      button.classList.toggle('is-active', file.name === this._workspace.activeFileName);
+      button.classList.toggle('is-active', !this._isFileManagerActive && file.name === this._workspace.activeFileName);
       button.classList.toggle('is-readonly', file.editable === false);
       button.textContent = file.name;
 
@@ -447,9 +457,274 @@ export default class EditorManager {
         button.title = `${file.name} (readonly)`;
       }
 
-      button.addEventListener('click', () => this.setActiveFile(file.name));
+      button.addEventListener('click', () => {
+        if (this._isFileManagerActive) {
+          this.closeFileManager();
+        }
+        this.setActiveFile(file.name);
+      });
       this._tabsElement.appendChild(button);
     });
+
+    if (allowAddingFiles) {
+      const addButton = document.createElement('button');
+      addButton.type = 'button';
+      addButton.className = 'editor-file-tab editor-file-tab-add';
+      addButton.classList.toggle('is-active', this._isFileManagerActive === true);
+      addButton.textContent = '+';
+      addButton.title = 'Manage files';
+      addButton.addEventListener('click', () => {
+        if (this._isFileManagerActive) {
+          this.closeFileManager();
+        } else {
+          this.openFileManager();
+        }
+      });
+      this._tabsElement.appendChild(addButton);
+    }
+  }
+
+  openFileManager() {
+    this._isFileManagerActive = true;
+    if (this._editorElement) {
+      this._editorElement.hidden = true;
+    }
+    if (this._fileManagerElement) {
+      this._fileManagerElement.hidden = false;
+      this.renderFileManager();
+    }
+    this.renderFileTabs();
+  }
+
+  closeFileManager() {
+    this._isFileManagerActive = false;
+    if (this._editorElement) {
+      this._editorElement.hidden = false;
+    }
+    if (this._fileManagerElement) {
+      this._fileManagerElement.hidden = true;
+    }
+    this.renderFileTabs();
+  }
+
+  renderFileManager() {
+    if (!this._fileManagerElement) {
+      return;
+    }
+
+    this._fileManagerElement.replaceChildren();
+
+    const header = document.createElement('div');
+    header.className = 'editor-fm-header';
+    const title = document.createElement('span');
+    title.className = 'editor-fm-title';
+    title.textContent = 'Files';
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'editor-fm-close';
+    closeBtn.textContent = '\u2715';
+    closeBtn.title = 'Close';
+    closeBtn.addEventListener('click', () => this.closeFileManager());
+    header.appendChild(title);
+    header.appendChild(closeBtn);
+    this._fileManagerElement.appendChild(header);
+
+    const list = document.createElement('ul');
+    list.className = 'editor-fm-list';
+
+    this._workspace.files.forEach((file) => {
+      const item = document.createElement('li');
+      item.className = 'editor-fm-item';
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'editor-fm-item-name';
+      nameSpan.textContent = file.name;
+      item.appendChild(nameSpan);
+
+      if (!file.isEntry) {
+        const renameBtn = document.createElement('button');
+        renameBtn.type = 'button';
+        renameBtn.className = 'editor-fm-btn editor-fm-rename';
+        renameBtn.textContent = '\u270E';
+        renameBtn.title = `Rename ${file.name}`;
+        renameBtn.addEventListener('click', () => this._startFileRename(item, file.name));
+        item.appendChild(renameBtn);
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'editor-fm-btn editor-fm-delete';
+        deleteBtn.textContent = '\u{1F5D1}';
+        deleteBtn.title = `Delete ${file.name}`;
+        deleteBtn.addEventListener('click', () => this._startFileDelete(item, file.name));
+        item.appendChild(deleteBtn);
+      } else {
+        const badge = document.createElement('span');
+        badge.className = 'editor-fm-badge';
+        badge.textContent = 'main';
+        item.appendChild(badge);
+      }
+
+      list.appendChild(item);
+    });
+
+    this._fileManagerElement.appendChild(list);
+
+    const addForm = document.createElement('div');
+    addForm.className = 'editor-fm-add-form';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'editor-fm-input';
+    input.placeholder = 'new_file.py';
+    input.setAttribute('aria-label', 'New file name');
+
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'editor-fm-btn editor-fm-add';
+    addBtn.textContent = '+ Add';
+    addBtn.addEventListener('click', () => {
+      const rawName = input.value.trim();
+      if (!rawName) {
+        return;
+      }
+      const name = this.normalizeWorkspaceFileName(rawName, this._workspace.files.length, false);
+      if (this.findWorkspaceFile(name)) {
+        input.classList.add('is-error');
+        return;
+      }
+      input.classList.remove('is-error');
+      this.addFileToWorkspace(name);
+      input.value = '';
+      this.renderFileManager();
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        addBtn.click();
+      }
+    });
+
+    addForm.appendChild(input);
+    addForm.appendChild(addBtn);
+    this._fileManagerElement.appendChild(addForm);
+  }
+
+  _startFileRename(item, oldName) {
+    item.replaceChildren();
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'editor-fm-input editor-fm-rename-input';
+    input.value = oldName;
+    input.setAttribute('aria-label', `Rename ${oldName}`);
+
+    const confirmBtn = document.createElement('button');
+    confirmBtn.type = 'button';
+    confirmBtn.className = 'editor-fm-btn editor-fm-confirm';
+    confirmBtn.textContent = '\u2713';
+    confirmBtn.title = 'Confirm';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'editor-fm-btn editor-fm-cancel';
+    cancelBtn.textContent = '\u2715';
+    cancelBtn.title = 'Cancel';
+
+    const doRename = () => {
+      const rawName = input.value.trim();
+      if (!rawName || rawName === oldName) {
+        this.renderFileManager();
+        return;
+      }
+      const newName = this.normalizeWorkspaceFileName(rawName, this._workspace.files.length, false);
+      if (this.findWorkspaceFile(newName)) {
+        input.classList.add('is-error');
+        return;
+      }
+      this.renameWorkspaceFile(oldName, newName);
+      this.renderFileManager();
+    };
+
+    confirmBtn.addEventListener('click', doRename);
+    cancelBtn.addEventListener('click', () => this.renderFileManager());
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        doRename();
+      }
+      if (e.key === 'Escape') {
+        this.renderFileManager();
+      }
+    });
+
+    item.appendChild(input);
+    item.appendChild(confirmBtn);
+    item.appendChild(cancelBtn);
+    input.focus();
+    input.select();
+  }
+
+  _startFileDelete(item, fileName) {
+    item.replaceChildren();
+    item.classList.add('is-confirming');
+
+    const msg = document.createElement('span');
+    msg.className = 'editor-fm-item-name';
+    msg.textContent = `Delete \u201C${fileName}\u201D?`;
+
+    const yesBtn = document.createElement('button');
+    yesBtn.type = 'button';
+    yesBtn.className = 'editor-fm-btn editor-fm-delete';
+    yesBtn.textContent = 'Delete';
+    yesBtn.addEventListener('click', () => {
+      this.removeWorkspaceFile(fileName);
+      this.renderFileManager();
+    });
+
+    const noBtn = document.createElement('button');
+    noBtn.type = 'button';
+    noBtn.className = 'editor-fm-btn editor-fm-cancel';
+    noBtn.textContent = 'Cancel';
+    noBtn.addEventListener('click', () => this.renderFileManager());
+
+    item.appendChild(msg);
+    item.appendChild(yesBtn);
+    item.appendChild(noBtn);
+  }
+
+  addFileToWorkspace(name, code = '', visible = true, editable = true) {
+    if (!name || this.findWorkspaceFile(name)) {
+      return;
+    }
+    this._workspace.files.push({ name, code, visible, editable, isEntry: false });
+    this.renderFileTabs();
+    this.onChangeCallback(this.getCode());
+  }
+
+  renameWorkspaceFile(oldName, newName) {
+    const file = this.findWorkspaceFile(oldName);
+    if (!file || file.isEntry || !newName || newName === oldName || this.findWorkspaceFile(newName)) {
+      return;
+    }
+    this.persistActiveFileCode();
+    file.name = newName;
+    if (this._workspace.activeFileName === oldName) {
+      this._workspace.activeFileName = newName;
+    }
+    this.renderFileTabs();
+    this.onChangeCallback(this.getCode());
+  }
+
+  removeWorkspaceFile(name) {
+    const index = this._workspace.files.findIndex((file) => file.name === name);
+    if (index === -1 || this._workspace.files[index].isEntry) {
+      return;
+    }
+    this._workspace.files.splice(index, 1);
+    if (this._workspace.activeFileName === name) {
+      this._workspace.activeFileName = this._workspace.entryFileName;
+    }
+    this.renderFileTabs();
+    this.onChangeCallback(this.getCode());
   }
 
   setActiveFile(fileName) {

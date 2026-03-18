@@ -151,7 +151,7 @@ export default class CodeContainer {
         {
           enabled: options?.projectStorageEnabled === true,
           entryFileName: options?.entryFileName || 'main.py',
-          entryFileVisible: options?.entryFileVisible !== false,
+          allowAddingFiles: options?.allowAddingFiles === true,
           sourceFiles: Array.isArray(options?.sourceFiles) ? options.sourceFiles : [],
         },
       );

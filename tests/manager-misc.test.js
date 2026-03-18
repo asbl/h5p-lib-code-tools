@@ -136,7 +136,7 @@ describe('EditorManager', () => {
     expect(snapshot.files.find((file) => file.name === 'secret.py')?.code).toBe('TOKEN = 1');
   });
 
-  it('allows hiding the entry file tab when explicitly configured', async () => {
+  it('shows file tabs and a "+" button when allowAddingFiles is enabled', async () => {
     const manager = new EditorManager(
       'print(1)',
       'python',
@@ -153,7 +153,38 @@ describe('EditorManager', () => {
       {
         enabled: true,
         entryFileName: 'main.py',
-        entryFileVisible: false,
+        allowAddingFiles: true,
+      },
+    );
+
+    const dom = manager.getDOM();
+    document.body.appendChild(dom);
+    await manager.setupEditors();
+
+    expect(manager.getVisibleFiles().map((file) => file.name)).toEqual(['main.py']);
+    expect(manager._tabsElement.hidden).toBe(false);
+    const tabTexts = Array.from(manager._tabsElement.querySelectorAll('button')).map((b) => b.textContent);
+    expect(tabTexts).toEqual(['main.py', '+']);
+  });
+
+  it('shows file tabs without "+" button when multiple files are visible', async () => {
+    const manager = new EditorManager(
+      'print(1)',
+      'python',
+      '',
+      '',
+      true,
+      5,
+      'editor2',
+      'pre2',
+      'post2',
+      vi.fn(),
+      vi.fn(),
+      'light',
+      {
+        enabled: true,
+        entryFileName: 'main.py',
+        allowAddingFiles: false,
         sourceFiles: [
           { name: 'helper.py', code: 'VALUE = 1', visible: true, editable: true },
         ],
@@ -164,9 +195,10 @@ describe('EditorManager', () => {
     document.body.appendChild(dom);
     await manager.setupEditors();
 
-    expect(manager.getVisibleFiles().map((file) => file.name)).toEqual(['helper.py']);
-    expect(manager.getWorkspaceSnapshot().activeFileName).toBe('helper.py');
-    expect(Array.from(manager._tabsElement.querySelectorAll('.editor-file-tab')).map((button) => button.textContent)).toEqual(['helper.py']);
+    expect(manager.getVisibleFiles().map((file) => file.name)).toEqual(['main.py', 'helper.py']);
+    expect(manager._tabsElement.hidden).toBe(false);
+    const tabTexts = Array.from(manager._tabsElement.querySelectorAll('button')).map((b) => b.textContent);
+    expect(tabTexts).toEqual(['main.py', 'helper.py']);
   });
 });
 
