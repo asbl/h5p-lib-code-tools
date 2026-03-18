@@ -66,6 +66,7 @@ export default class EditorManager {
     this.workspaceOptions = {
       enabled: workspaceOptions?.enabled === true,
       entryFileName: workspaceOptions?.entryFileName || 'main.py',
+      entryFileVisible: workspaceOptions?.entryFileVisible !== false,
       sourceFiles: Array.isArray(workspaceOptions?.sourceFiles)
         ? workspaceOptions.sourceFiles
         : [],
@@ -243,7 +244,7 @@ export default class EditorManager {
       {
         name: this.workspaceOptions.entryFileName,
         code: this.defaultCode,
-        visible: true,
+        visible: this.workspaceOptions.entryFileVisible !== false,
         editable: true,
         isEntry: true,
       },
@@ -266,6 +267,7 @@ export default class EditorManager {
   createWorkspaceFromSnapshot(workspace = {}, fallbackWorkspace = null) {
     const fallback = fallbackWorkspace ? this.cloneWorkspace(fallbackWorkspace) : null;
     const entryFileName = workspace?.entryFileName || fallback?.entryFileName || this.workspaceOptions.entryFileName;
+    const entryFileVisible = this.workspaceOptions.entryFileVisible !== false;
     const rawFiles = Array.isArray(workspace?.files)
       ? workspace.files
       : fallback?.files || [];
@@ -275,6 +277,11 @@ export default class EditorManager {
     const pushFile = (file, index) => {
       const name = this.createUniqueWorkspaceFileName(file?.name, usedNames, index, file?.isEntry === true);
       const existingFallback = fallback?.files?.find((candidate) => candidate.name === name);
+      const isEntry = file?.isEntry === true;
+      const hasExplicitVisibility = typeof file?.visible === 'boolean';
+      const hasFallbackVisibility = typeof existingFallback?.visible === 'boolean';
+      const hasExplicitEditable = typeof file?.editable === 'boolean';
+      const hasFallbackEditable = typeof existingFallback?.editable === 'boolean';
       const normalizedFile = {
         name,
         code: this.getDecodedCode(
@@ -282,14 +289,22 @@ export default class EditorManager {
             ? file.code
             : existingFallback?.code || ''
         ),
-        visible: file?.isEntry === true
-          ? true
-          : file?.visible !== false,
-        editable: file?.isEntry === true
-          ? true
-          : file?.editable !== false,
-        isEntry: file?.isEntry === true,
+        visible: hasExplicitVisibility
+          ? file.visible
+          : hasFallbackVisibility
+            ? existingFallback.visible
+            : (isEntry ? entryFileVisible : true),
+        editable: hasExplicitEditable
+          ? file.editable
+          : hasFallbackEditable
+            ? existingFallback.editable
+            : true,
+        isEntry,
       };
+
+      if (normalizedFile.isEntry) {
+        normalizedFile.editable = true;
+      }
 
       files.push(normalizedFile);
     };
@@ -301,7 +316,7 @@ export default class EditorManager {
       pushFile({
         name: entryFileName,
         code: workspace?.entryCode || fallbackEntry?.code || this.defaultCode,
-        visible: true,
+        visible: entryFileVisible,
         editable: true,
         isEntry: true,
       }, files.length);
@@ -310,7 +325,6 @@ export default class EditorManager {
     files.forEach((file) => {
       if (file.name === entryFileName) {
         file.isEntry = true;
-        file.visible = true;
         file.editable = true;
       }
     });
@@ -339,14 +353,14 @@ export default class EditorManager {
   }
 
   normalizeActiveFileName(activeFileName, files, entryFileName) {
-    const activeVisibleFile = files.find((file) => file.name === activeFileName && (file.visible !== false || file.isEntry));
+    const activeVisibleFile = files.find((file) => file.name === activeFileName && file.visible !== false);
 
     if (activeVisibleFile) {
       return activeVisibleFile.name;
     }
 
-    return files.find((file) => file.name === entryFileName)?.name
-      || files.find((file) => file.visible !== false)?.name
+    return files.find((file) => file.visible !== false)?.name
+      || files.find((file) => file.name === entryFileName)?.name
       || files[0]?.name
       || entryFileName;
   }
@@ -408,7 +422,7 @@ export default class EditorManager {
   }
 
   getVisibleFiles() {
-    return this._workspace.files.filter((file) => file.visible !== false || file.isEntry);
+    return this._workspace.files.filter((file) => file.visible !== false);
   }
 
   renderFileTabs() {
@@ -445,7 +459,7 @@ export default class EditorManager {
 
     const nextFile = this.findWorkspaceFile(fileName);
 
-    if (!nextFile || (nextFile.visible === false && !nextFile.isEntry)) {
+    if (!nextFile || nextFile.visible === false) {
       return;
     }
 

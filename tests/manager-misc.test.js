@@ -135,6 +135,39 @@ describe('EditorManager', () => {
     expect(snapshot.files.find((file) => file.name === 'helper.py')?.code).toBe('VALUE = 2');
     expect(snapshot.files.find((file) => file.name === 'secret.py')?.code).toBe('TOKEN = 1');
   });
+
+  it('allows hiding the entry file tab when explicitly configured', async () => {
+    const manager = new EditorManager(
+      'print(1)',
+      'python',
+      '',
+      '',
+      true,
+      5,
+      'editor',
+      'pre',
+      'post',
+      vi.fn(),
+      vi.fn(),
+      'light',
+      {
+        enabled: true,
+        entryFileName: 'main.py',
+        entryFileVisible: false,
+        sourceFiles: [
+          { name: 'helper.py', code: 'VALUE = 1', visible: true, editable: true },
+        ],
+      },
+    );
+
+    const dom = manager.getDOM();
+    document.body.appendChild(dom);
+    await manager.setupEditors();
+
+    expect(manager.getVisibleFiles().map((file) => file.name)).toEqual(['helper.py']);
+    expect(manager.getWorkspaceSnapshot().activeFileName).toBe('helper.py');
+    expect(Array.from(manager._tabsElement.querySelectorAll('.editor-file-tab')).map((button) => button.textContent)).toEqual(['helper.py']);
+  });
 });
 
 describe('ConsoleManager', () => {
