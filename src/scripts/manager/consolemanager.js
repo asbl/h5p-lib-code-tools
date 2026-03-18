@@ -1,78 +1,155 @@
+import CodeMirrorInstance from '@scripts/editor/codemirror-instance.js';
+
+/**
+ * Manages the console output component.
+ */
 export default class ConsoleManager {
-  constructor(hasConsole, consoleUID, consoleType) {
-    this.consoleUID = consoleUID;
+
+  /**
+   * @param {boolean} hasConsole
+   * @param {string} consoleUID
+   * @param {object} l10n
+   * @param {string} consoleType
+   */
+  constructor(hasConsole, consoleUID, l10n, consoleType = 'codemirror') {
     this.hasConsole = hasConsole ?? true;
-    this.consoleType = consoleType || 'textarea';
+    this.consoleUID = consoleUID;
+    this.l10n = l10n || {};
+    this.consoleType = consoleType;
+    this.theme = 'light';
+
+    /** @type {CodeMirrorInstance|null} */
+    this._consoleInstance = null;
+
+    /** @type {DocumentFragment|null} */
+    this._domFragment = null;
+
+    /** @type {HTMLElement|null} */
+    this._consoleElement = null;
   }
 
+  /**
+   * Creates console DOM (same pattern as EditorManager)
+   * @returns {DocumentFragment|null}
+   */
   getDOM() {
-    // Return null if console is not enabled
     if (!this.hasConsole) return null;
+    if (this._domFragment) return this._domFragment;
 
-    // Create wrapper div for the console
+    const fragment = document.createDocumentFragment();
+
     const wrapper = document.createElement('div');
-    wrapper.classList.add('console_wrapper', 'console-wrapper', 'hidden');
+    wrapper.className = 'console_wrapper console-wrapper hidden';
 
-    // Create and append header div
     const header = document.createElement('div');
-    header.id = 'h5p_cm_console_header';
-    header.classList.add('cm', 'console', 'console-header');
-    header.textContent = 'Console'; // Display title
-    wrapper.appendChild(header);
+    header.className = 'console-header';
+    header.textContent = this.l10n.console;
 
-    // Create console body (textarea or div based on type)
-    let body;
-    if (this.consoleType === 'textarea') {
-      body = document.createElement('textarea');
-      body.readOnly = true; // Make it read-only
-    }
-    else {
-      body = document.createElement('div');
-      body.setAttribute('readonly', ''); // Optional for consistency
-    }
-
-    // Set ID and classes for styling
+    const body = document.createElement('div');
     body.id = this.consoleUID;
-    body.classList.add('console', 'console-body');
+    body.className = 'console console-body';
+    this._consoleElement = body;
+
+    wrapper.appendChild(header);
     wrapper.appendChild(body);
+    fragment.appendChild(wrapper);
 
-    // Return the complete console wrapper element
-    return wrapper;
-  }
+    this._domFragment = fragment;
 
-  clearConsole() {
-    const el = document.getElementById(this.consoleUID);
-    if (el) el.value = '';
+    return fragment;
   }
 
   /**
-   * Hides console as div
+   * Initializes the console editor (after DOM is attached)
    */
-  hideConsole() {
-    const el = document.getElementById(this.consoleUID).parentElement;
-    el.classList.add('hidden');
+  async setupConsole() {
+    if (!this.hasConsole) return;
+    if (this._consoleInstance) return;
+
+    this._consoleInstance = new CodeMirrorInstance(
+      this._consoleElement ?? this.consoleUID,
+      '',
+      'text',
+      {
+        readonly: true,
+        isConsole: true,
+        highlightActiveLine: false,
+        showLineNumbers: false,
+        theme: this.theme
+      }
+    );
   }
 
   /**
-   * Shows the console
+  * Returns the CodeMirror editor DOM
+  * @returns {HTMLElement|null}
+  */
+  getConsole() {
+    if (this._consoleInstance) {
+      return this._consoleInstance.editorView.dom;
+    }
+    return null;
+  }
+
+  /**
+   * Writes text to console
+   * @param {string} text
+   * @param {string} identifier
    */
+  write(text, identifier = '') {
+    if (!this._consoleInstance) return;
+
+    const line = identifier
+      ? `[${identifier}] > ${text.trim()}\n`
+      : `> ${text.trim()}\n`;
+
+    const oldCode = this._consoleInstance.getCode();
+    this._consoleInstance.setCode(oldCode + line);
+  }
+
   showConsole() {
     const el = document.getElementById(this.consoleUID).parentElement;
     el.classList.remove('hidden');
   }
 
+  /**
+   * Clears console
+   */
+  clearConsole() {
+    if (!this._consoleInstance) return;
+    this._consoleInstance.setCode('');
+  }
+
+  /**
+   * Returns CSS classes
+   * @returns {string}
+   */
   getHTMLClasses() {
     return this.hasConsole ? ' has_console' : ' not_has_console';
   }
-
-  getConsole() {
-    return document.getElementById(this.consoleUID);
+  /**
+   * Fix console height (fullscreen)
+   * @param {number} lines
+   */
+  setFullscreenLines(lines) {
+    this._consoleInstance?.setFixedLines(lines);
   }
 
-  write(text, identifier = '') {
-    const consoleEl = this.getConsole();
-    if (identifier != '')
-      consoleEl.value += `[${identifier}] > ${text.trim()}\n`;
-    else consoleEl.value += `> ${text.trim()}\n`;
+  /**
+   * Restore console dynamic height
+   */
+  restoreConsoleHeight() {
+    this._consoleInstance?.restoreDynamicHeight();
   }
+
+  /**
+   * Applies a new console theme.
+   * @param {string} theme Theme variant.
+   */
+  setTheme(theme) {
+    this.theme = theme === 'dark' ? 'dark' : 'light';
+    this._consoleInstance?.setTheme(this.theme);
+  }
+
+
 }

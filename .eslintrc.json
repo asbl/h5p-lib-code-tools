@@ -6,8 +6,7 @@
     "alertify": "readonly",
     "ace": "readonly",
     "DOMPurify": "readonly",
-    "marked": "readonly",
-    "hljs": "readonly"
+    "marked": "readonly"
   },
   "env": {
     "browser": true,

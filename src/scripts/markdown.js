@@ -1,8 +1,24 @@
 import { marked } from 'marked';
-import * as DOMPurify from 'dompurify';
-import hljs from 'highlight.js';
-import markedAdmonition, { setConfig } from 'marked-admonition-extension';
+import DOMPurify from 'dompurify';
+import markedAdmonition from 'marked-admonition-extension';
 import 'marked-admonition-extension/dist/index.css';
+import renderReadonlyCodeBlock from './editor/readonly-code-block';
+
+/**
+ * Extracts the language name from a markdown code element.
+ * @param {HTMLElement} codeElement Code element from the rendered markdown.
+ * @returns {string} Normalized language name.
+ */
+function getCodeLanguage(codeElement) {
+  const languageClass = Array.from(codeElement.classList)
+    .find((className) => className.startsWith('language-'));
+
+  if (languageClass) {
+    return languageClass.replace('language-', '');
+  }
+
+  return codeElement.dataset.language || '';
+}
 
 /**
  * Converts markdown text to html
@@ -31,7 +47,14 @@ export default class Markdown {
     let mdDiv = document.createElement('div');
     mdDiv.innerHTML = this.getHTML();
     mdDiv.querySelectorAll('pre code').forEach((el) => {
-      hljs.highlightElement(el);
+      const preElement = el.parentElement;
+      const codeBlock = renderReadonlyCodeBlock(
+        el.textContent || '',
+        getCodeLanguage(el),
+        { theme: 'light' }
+      );
+
+      preElement?.replaceWith(codeBlock);
     });
     return mdDiv;
   }

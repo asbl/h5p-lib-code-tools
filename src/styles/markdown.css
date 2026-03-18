@@ -1,0 +1,13 @@
+.h5p-markdown-code-block {
+	margin: 1rem 0;
+}
+
+.h5p-markdown-code-block .cm-editor {
+	border: 1px solid rgba(0, 0, 0, 0.14);
+	border-radius: 8px;
+	overflow: hidden;
+}
+
+.h5p-markdown-code-block .cm-scroller {
+	overflow: auto;
+}

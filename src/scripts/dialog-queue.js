@@ -4,7 +4,7 @@ import Swal from 'sweetalert2-uncensored';
  * display of SweetAlert2 dialogs.
  * It provides two public methods:
  *
- *  * `enqueueAlert(message|config, options?)` – shows a simple alert/confirmation
+ *  `enqueueAlert(message|config, options?)` – shows a simple alert/confirmation
  *    dialog and resolves when the user closes it.
  *  * `enqueueInput(prompt|config, options?)` – shows an input dialog and resolves
  *    with the text entered by the user.
@@ -32,23 +32,18 @@ import Swal from 'sweetalert2-uncensored';
 export default class DialogQueue {
   /**
    * Create a new DialogQueue.
-   *
    * @param {Object} [cfg] - Configuration object.
    * @param {number} [cfg.defaultTimeout=0] - Default timeout (ms) applied to
    *   every dialog unless overridden in the call options. `0` means “no timeout”.
    */
   constructor({ defaultTimeout = 0 } = {}) {
-    /** @private {Promise<void>} Holds the last promise in the chain. */
     this._tail = Promise.resolve();
-
-    /** @private {number} Default timeout used when a call does not specify one. */
     this.defaultTimeout = defaultTimeout;
   }
 
   /**
    * Escape a string for safe insertion into HTML.
    * Replaces &, <, >, ", ' with their entity equivalents.
-   *
    * @param {string} str
    * @returns {string}
    */
@@ -65,15 +60,14 @@ export default class DialogQueue {
 
   /**
    * Internal helper that appends a SweetAlert dialog to the current promise chain.
-   *
    * @private
    * @param {Object} swalConfig - Full SweetAlert2 configuration object.
-   * @param {Object} [opts] - Optional per‑call options.
+   * @param {Object} [_opts] - Optional per‑call options.
    * @param {number} [opts.timeout] - Timeout (ms) for this specific dialog.
    * @returns {Promise<any>} Promise that resolves with the SweetAlert result
    *   (or `undefined` on timeout/error).
    */
-  _enqueue(swalConfig, opts = {}) {
+  _enqueue(swalConfig, _opts = {}) {
     // Append a new step to the queue.
     const next = this._tail.then(
       () =>
@@ -92,13 +86,12 @@ export default class DialogQueue {
     );
 
     // Ensure a rejection does not break the whole chain.
-    this._tail = next.catch(() => {});
+    this._tail = next.catch(() => { });
     return next;
   }
 
   /**
    * Show a simple alert/confirmation dialog.
-   *
    * @param {string|Object} textOrConfig - Either a plain string (used as `text`)
    *   or a full SweetAlert2 configuration object.
    * @param {Object} [opts] - Optional per‑call options.
@@ -123,7 +116,6 @@ export default class DialogQueue {
 
   /**
    * Show an input dialog and retrieve the entered text.
-   *
    * @param {string|Object} promptOrConfig - Prompt string (used as `title`) or a
    *   SweetAlert2 configuration object. The `input` property will be forced to `'text'`.
    * @param {Object} [opts] - Optional per‑call options.

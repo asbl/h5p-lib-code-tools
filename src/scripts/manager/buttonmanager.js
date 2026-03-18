@@ -1,4 +1,9 @@
 /**
+ * @typedef {object} ButtonManagerOptions
+ * @property {boolean} [showStorageButtons] - Whether default save/load buttons should be created.
+ */
+
+/**
  * Manages a collection of buttons that can be shown, hidden, or updated.
  * Buttons are stored internally, so they are accessible even if not attached to the DOM.
  */
@@ -9,15 +14,17 @@ export default class ButtonManager {
    * @param {object} l10n - Localization object containing button labels.
    * @param {function} onAction - Callback function for button actions.
    * @param {boolean} [empty] - Whether to create default buttons or not.
+   * @param {ButtonManagerOptions} [options] - Additional manager options.
    */
-  constructor(containerHTML, hasButtons, l10n, onAction, empty = false) {
+  constructor(containerHTML, hasButtons, l10n, onAction, empty = false, options = {}) {
     this.containerHTML = containerHTML;
     this.hasButtons = hasButtons;
     this.onAction = onAction;
     this.parent = this.getParent();
     this.l10n = l10n;
     this.empty = empty;
-    this.buttons = new Map();
+    this.options = options;
+    this.showStorageButtons = options.showStorageButtons !== false;
     this.buttonIndex = 0;
 
     /**
@@ -47,11 +54,7 @@ export default class ButtonManager {
    * @param {string} buttonName - Identifier of the button to show.
    */
   showButton(buttonName) {
-    const buttonObj = this.buttons.get(buttonName);
-    if (buttonObj?.dom) {
-      buttonObj.dom.style.visibility = 'visible';
-      buttonObj.dom.style.display = 'block';
-    }
+    this.setButtonVisibility(buttonName, true);
   }
 
   /**
@@ -59,10 +62,20 @@ export default class ButtonManager {
    * @param {string} buttonName - Identifier of the button to hide.
    */
   hideButton(buttonName) {
+    this.setButtonVisibility(buttonName, false);
+  }
+
+  /**
+   * Updates the DOM visibility of one button.
+   * @param {string} buttonName - Identifier of the button.
+   * @param {boolean} isVisible - Whether the button should be visible.
+   * @returns {void}
+   */
+  setButtonVisibility(buttonName, isVisible) {
     const buttonObj = this.buttons.get(buttonName);
     if (buttonObj?.dom) {
-      buttonObj.dom.style.visibility = 'hidden';
-      buttonObj.dom.style.display = 'none';
+      buttonObj.dom.style.visibility = isVisible ? 'visible' : 'hidden';
+      buttonObj.dom.style.display = isVisible ? 'block' : 'none';
     }
   }
 
@@ -90,7 +103,18 @@ export default class ButtonManager {
    */
   async setupButtons() {
     if (!this.hasButtons) return;
-    this.defaultButtons.forEach((buttonConfig) => this.addButton(buttonConfig));
+    this.addButtons(this.defaultButtons);
+  }
+
+  /**
+   * Adds multiple buttons in registration order.
+   * @param {object[]} [buttonConfigs] - Button definitions.
+   * @returns {HTMLButtonElement[]} Created button elements.
+   */
+  addButtons(buttonConfigs = []) {
+    return buttonConfigs
+      .map((buttonConfig) => this.addButton(buttonConfig))
+      .filter(Boolean);
   }
 
   /**
@@ -100,13 +124,22 @@ export default class ButtonManager {
    * @param {string} buttonConfig.label - Label text of the button.
    * @param {string} buttonConfig.class - CSS class of the button.
    * @param {string} [buttonConfig.additionalClass] - Optional additional CSS class.
-   * @param {string} [buttonConfig.state] - Optional: visible or hidden
-   * @returns {HTMLButtonElement} The created button element.
+   * @param {string} [buttonConfig.state] - Optional: visible or hidden.
+   * @returns {HTMLButtonElement|undefined} The created button element.
    */
   addButton(buttonConfig) {
     if (!this.hasButtons) return;
 
+    if (!buttonConfig?.identifier) {
+      throw new Error('buttonConfig.identifier is required');
+    }
+
+    if (this.buttons.has(buttonConfig.identifier)) {
+      throw new Error(`Button '${buttonConfig.identifier}' is already registered.`);
+    }
+
     const button = document.createElement('button');
+    button.type = 'button';
     button.id = buttonConfig.identifier;
     button.classList.add(
       'button',
@@ -117,8 +150,20 @@ export default class ButtonManager {
     if (buttonConfig.additionalClass) {
       button.classList.add(buttonConfig.additionalClass);
     }
+    if (buttonConfig.icon) {
+      button.appendChild(this.createIconElement(buttonConfig.icon, buttonConfig.label !== ''));
+    }
 
-    button.textContent = buttonConfig.label;
+    if (buttonConfig.title) {
+      button.title = buttonConfig.title;
+    }
+
+    if (buttonConfig.ariaLabel || buttonConfig.label === '') {
+      button.setAttribute('aria-label', buttonConfig.ariaLabel || this.getFallbackAriaLabel(buttonConfig));
+    }
+
+    const textNode = document.createTextNode(buttonConfig.label);
+    button.appendChild(textNode);
 
     this.buttons.set(buttonConfig.identifier, {
       config: buttonConfig,
@@ -127,11 +172,91 @@ export default class ButtonManager {
     });
 
     if (buttonConfig.state === 'hidden') {
-      button.style.visibility = 'hidden';
-      button.style.display = 'none';
+      this.setButtonVisibility(buttonConfig.identifier, false);
     }
 
     return button;
+  }
+
+  /**
+   * Creates an icon element for a button.
+   * @param {string} iconClass - Font Awesome class list.
+   * @param {boolean} hasLabel - Whether the button also has visible text.
+   * @returns {HTMLElement} Icon wrapper element.
+   */
+  createIconElement(iconClass, hasLabel = false) {
+    const iconWrapper = document.createElement('span');
+    iconWrapper.className = 'button-icon';
+
+    if (hasLabel) {
+      iconWrapper.style.marginRight = '0.5em';
+    }
+
+    const iconElement = document.createElement('i');
+    iconClass.split(' ').forEach((cls) => iconElement.classList.add(cls));
+    iconWrapper.appendChild(iconElement);
+
+    return iconWrapper;
+  }
+
+  /**
+   * Updates a button icon in place.
+   * @param {string} buttonName - Identifier of the button.
+   * @param {string} iconClass - New icon class list.
+   */
+  setButtonIcon(buttonName, iconClass) {
+    const buttonObj = this.buttons.get(buttonName);
+    if (!buttonObj?.dom) return;
+
+    buttonObj.config.icon = iconClass;
+
+    const iconElement = this.createIconElement(iconClass, buttonObj.config.label !== '');
+    const existingIcon = buttonObj.dom.querySelector('.button-icon');
+
+    if (existingIcon) {
+      existingIcon.replaceWith(iconElement);
+    }
+    else {
+      buttonObj.dom.insertBefore(iconElement, buttonObj.dom.firstChild);
+    }
+  }
+
+  /**
+   * Updates a button aria-label.
+   * @param {string} buttonName - Identifier of the button.
+   * @param {string} ariaLabel - Accessible label.
+   */
+  setButtonAriaLabel(buttonName, ariaLabel) {
+    const buttonObj = this.buttons.get(buttonName);
+    if (!buttonObj?.dom) return;
+
+    buttonObj.config.ariaLabel = ariaLabel;
+    buttonObj.dom.setAttribute('aria-label', ariaLabel);
+  }
+
+  /**
+   * Updates a button title.
+   * @param {string} buttonName - Identifier of the button.
+   * @param {string} title - Button title.
+   */
+  setButtonTitle(buttonName, title) {
+    const buttonObj = this.buttons.get(buttonName);
+    if (!buttonObj?.dom) return;
+
+    buttonObj.config.title = title;
+    buttonObj.dom.title = title;
+  }
+
+  /**
+   * Builds a fallback aria-label for icon-only buttons.
+   * @param {object} buttonConfig - Button configuration.
+   * @returns {string} Fallback label.
+   */
+  getFallbackAriaLabel(buttonConfig) {
+    return (buttonConfig.name || buttonConfig.identifier || 'button')
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/_/g, ' ')
+      .trim();
   }
 
   /**
@@ -140,11 +265,12 @@ export default class ButtonManager {
    */
   getDefaultButtons() {
     if (!this.empty) {
-      return [
+      const buttons = [
         {
           identifier: 'runButton',
           name: 'run',
-          label: '▶ Run',
+          icon: 'fa-solid fa-play',
+          label: this.l10n.run,
           class: 'run_code',
           state: 'visible',
           active: true,
@@ -153,7 +279,8 @@ export default class ButtonManager {
         {
           identifier: 'stopButton',
           name: 'stop_button',
-          label: '⏹ Stop',
+          icon: 'fa-solid fa-stop',
+          label: this.l10n.stop,
           class: 'stop_button',
           state: 'hidden',
           active: false,
@@ -162,31 +289,40 @@ export default class ButtonManager {
         {
           identifier: 'showCodeButton',
           name: 'show_code',
-          label: '⌨ Code',
+          label: this.l10n.showCode,
           class: 'show_code',
           state: 'hidden',
           active: false,
           weight: -1
         },
-        {
-          identifier: 'saveButton',
-          name: 'save',
-          label: '🖪 Save',
-          class: 'save_button',
-          state: 'visible',
-          active: false,
-          weight: 1
-        },
-        {
-          identifier: 'loadButton',
-          name: 'load',
-          label: '🗂 Load',
-          class: 'load_button',
-          state: 'visible',
-          active: false,
-          weight: 1,
-        },
       ];
+
+      if (this.showStorageButtons) {
+        buttons.push(
+          {
+            identifier: 'saveButton',
+            name: 'save',
+            icon: 'fa-solid fa-floppy-disk',
+            label: this.l10n.save,
+            class: 'save_button',
+            state: 'visible',
+            active: false,
+            weight: 1,
+          },
+          {
+            identifier: 'loadButton',
+            name: 'load',
+            icon: 'fa-solid fa-upload',
+            label: this.l10n.load,
+            class: 'load_button',
+            state: 'visible',
+            active: false,
+            weight: 1,
+          },
+        );
+      }
+
+      return buttons;
     }
     return [];
   }

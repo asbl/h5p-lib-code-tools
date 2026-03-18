@@ -1,4 +1,4 @@
-import AceEditorInstance from '../editor/aceeditor-instance';
+import CodeMirrorInstance from '../editor/codemirror-instance';
 
 export default class EditorManager {
   constructor(
@@ -13,6 +13,8 @@ export default class EditorManager {
     postCodeUID,
     onChangeCallback = () => { },
     resizeActionHandler = () => { },
+    theme = 'light',
+    workspaceOptions = {},
   ) {
     this.showLineNumbers = true;
     this.codingLanguage = codingLanguage;
@@ -20,7 +22,6 @@ export default class EditorManager {
     this.defaultCode = code ? this.getDecodedCode(code) : '';
     this.preCode = preCode ? this.getDecodedCode(preCode) : '';
     this.postCode = postCode ? this.getDecodedCode(postCode) : '';
-
     this.hasPreCode = this.preCode != null && this.preCode.trim().length > 0;
     if (this.preCode) {
       this.preCode = this.preCode.trimEnd();
@@ -47,16 +48,30 @@ export default class EditorManager {
     this._mainEditorInstance = null;
     this._preCodeEditorInstance = null;
     this._postCodeEditorInstance = null;
+    this._editorInstance = null;
 
     // Dom Elements
     this.editorUID = editorUID;
     this.preCodeUID = preCodeUID;
     this.postCodeUID = postCodeUID;
+    this._editorElement = null;
+    this._tabsElement = null;
+    this._wrapperElement = null;
 
     // On Code-Change Callback
     this.onChangeCallback = onChangeCallback;
 
     this.resizeActionHandler = resizeActionHandler || (() => { });
+    this.theme = theme === 'dark' ? 'dark' : 'light';
+    this.workspaceOptions = {
+      enabled: workspaceOptions?.enabled === true,
+      entryFileName: workspaceOptions?.entryFileName || 'main.py',
+      sourceFiles: Array.isArray(workspaceOptions?.sourceFiles)
+        ? workspaceOptions.sourceFiles
+        : [],
+    };
+    this._defaultWorkspace = this.createDefaultWorkspace();
+    this._workspace = this.cloneWorkspace(this._defaultWorkspace);
   }
 
   /**
@@ -79,104 +94,42 @@ export default class EditorManager {
    * Sets up pre, main, and post editors
    */
   async setupEditors() {
-    if (this.preCodeLines) {
-      this._preCodeEditorInstance = new AceEditorInstance(
-        this.preCodeUID,
-        this.preCode,
-        this.codingLanguage,
-        {
-          firstLine: 1,
-          readonly: true,
-          highlightActiveLine: false,
-          resizeActionHandler: this.resizeActionHandler,
-          showLineNumbers: true
-        },
-      );
-      this._preCodeEditorInstance.createEditor({});
+    if (this._editorInstance) {
+      return;
     }
 
-    this._mainEditorInstance = new AceEditorInstance(
-      this.editorUID,
-      this.defaultCode,
-      this.codingLanguage,
-      {
-        firstLine: this.preCodeLines + 1,
-        readonly: false,
-        highlightActiveLine: true,
-        onChangeCallback: this.onChangeCallback,
-        resizeActionHandler: this.resizeActionHandler,
-        showLineNumber: true
-      },
-    );
-    this._mainEditorInstance.createEditor();
-
-    this._postCodeEditorInstance = new AceEditorInstance(
-      this.postCodeUID,
-      this.postCode,
-      this.codingLanguage,
-      {
-        showLineNumbers: true,
-        readonly: true,
-        highlightActiveLine: false,
-        resizeActionHandler: this.resizeActionHandler,
-      },
-    );
-    if (this.postCodeLines) {
-      this._postCodeEditorInstance.createEditor();
-    }
+    this.renderFileTabs();
+    this.mountEditorForActiveFile();
   }
 
   getDOM() {
+    if (this._domFragment) return this._domFragment;
+
     const fragment = document.createDocumentFragment();
 
     const wrapper = document.createElement('div');
     wrapper.className = 'container container-code';
+  this._wrapperElement = wrapper;
 
-    const preWrapper = document.createElement('div');
-    preWrapper.className = `pre_wrapper ${this.preCodeVisible}`;
+  const tabs = document.createElement('div');
+  tabs.className = 'editor-file-tabs';
+  tabs.hidden = true;
+  this._tabsElement = tabs;
+  wrapper.appendChild(tabs);
 
-    const preHeader = document.createElement('div');
-    preHeader.className =
-      'h5p_code_editor_pre_header code_editor_editor_pre_header';
-    preHeader.textContent = 'Pre Code';
-    preWrapper.appendChild(preHeader);
-
-    const preCode = document.createElement('div');
-    preCode.id = this.preCodeUID;
-    preCode.className = 'h5p_code_editor_pre code_editor_pre';
-    preCode.style.height = `${this.preCodeLines * 18}px`;
-    preCode.style.width = '100%';
-    preCode.classList.add(this.preCodeVisible);
-    preWrapper.appendChild(preCode);
-
+    // Main Editor
     const editor = document.createElement('div');
     editor.id = this.editorUID;
     editor.className = 'h5p_editor_container editor_container';
     editor.style.width = '100%';
+    this._editorElement = editor;
 
-    const postWrapper = document.createElement('div');
-    postWrapper.className = `post_wrapper ${this.postCodeVisible}`;
-
-    const postHeader = document.createElement('div');
-    postHeader.className =
-      'h5p_code_editor_post_header code_editor_post_header';
-    postHeader.textContent = 'Post Code';
-    postWrapper.appendChild(postHeader);
-
-    const postCode = document.createElement('div');
-    postCode.id = this.postCodeUID;
-    postCode.className = 'h5p_code_editor_post code_editor_post';
-    postCode.classList.add(this.postCodeVisible);
-    postCode.style.height = `${this.postCodeLines * 18}px`;
-    postCode.style.width = '100%';
-    postWrapper.appendChild(postCode);
-
-    wrapper.appendChild(preWrapper);
+    // Append alles
     wrapper.appendChild(editor);
-    wrapper.appendChild(postWrapper);
 
     fragment.appendChild(wrapper);
 
+    this._domFragment = fragment; // Cache setzen
     return fragment;
   }
 
@@ -185,16 +138,26 @@ export default class EditorManager {
    * @returns {string} combined code from pre, main, and post editors
    */
   getCode() {
-    let code = this._mainEditorInstance.getCode();
-    if (this._preCodeEditorInstance)
-      code = this._preCodeEditorInstance.getCode() + code;
-    if (this._postCodeEditorInstance)
-      code += this._postCodeEditorInstance.getCode();
-    return code;
+    this.persistActiveFileCode();
+    return this.getFileCode(this.workspaceOptions.entryFileName, {
+      includeFixedCode: true,
+    });
   }
 
   setCode(code) {
-    this._mainEditorInstance.setCode(code);
+    const mainFile = this.findWorkspaceFile(this.workspaceOptions.entryFileName);
+
+    if (!mainFile) {
+      return;
+    }
+
+    mainFile.code = this.extractEditableCode(code, mainFile);
+
+    if (this.getActiveFile()?.name === mainFile.name) {
+      this._editorInstance?.setCode(this.getFileCode(mainFile.name, {
+        includeFixedCode: true,
+      }));
+    }
   }
 
   /**
@@ -202,6 +165,398 @@ export default class EditorManager {
    * @returns {number} number of lines
    */
   getCodeLines() {
-    return this.defaultCode.split(/\r\n|\r|\n/).length;
+    if (!this._workspace) {
+      return this.getLineCount(this.defaultCode);
+    }
+
+    return this.getLineCount(this.getFileCode(this.getActiveFile()?.name, {
+      includeFixedCode: true,
+    }));
+  }
+
+  /**
+ * Fix the main editor lines (fullscreen)
+ * @param {number} lines
+ */
+  setFullscreenLines(lines) {
+    this._editorInstance?.setFixedLines(lines);
+  }
+
+  /**
+   * Restore dynamic height after leaving fullscreen
+   */
+  restoreDynamicHeight() {
+    this._editorInstance?.restoreDynamicHeight();
+  }
+
+  /**
+   * Applies a new editor theme.
+   * @param {string} theme Theme variant.
+   */
+  setTheme(theme) {
+    this.theme = theme === 'dark' ? 'dark' : 'light';
+    this._editorInstance?.setTheme(this.theme);
+  }
+
+  getWorkspaceSnapshot() {
+    this.persistActiveFileCode();
+    return this.cloneWorkspace(this._workspace);
+  }
+
+  getDefaultWorkspaceSnapshot() {
+    return this.cloneWorkspace(this._defaultWorkspace);
+  }
+
+  setWorkspaceSnapshot(workspace = {}) {
+    this._workspace = this.createWorkspaceFromSnapshot(workspace, this._defaultWorkspace);
+    this.renderFileTabs();
+
+    if (this._editorElement) {
+      this.mountEditorForActiveFile();
+    }
+  }
+
+  hasAdditionalSourceFiles() {
+    return this.getWorkspaceFiles().some((file) => !file.isEntry);
+  }
+
+  getWorkspaceFiles() {
+    return this.getWorkspaceSnapshot().files;
+  }
+
+  createDefaultWorkspace() {
+    const files = [
+      {
+        name: this.workspaceOptions.entryFileName,
+        code: this.defaultCode,
+        visible: true,
+        editable: true,
+        isEntry: true,
+      },
+      ...this.workspaceOptions.sourceFiles.map((file) => ({
+        name: file.name,
+        code: this.getDecodedCode(file.code || ''),
+        visible: file.visible !== false,
+        editable: file.editable !== false,
+        isEntry: false,
+      })),
+    ];
+
+    return this.createWorkspaceFromSnapshot({
+      entryFileName: this.workspaceOptions.entryFileName,
+      activeFileName: this.workspaceOptions.entryFileName,
+      files,
+    });
+  }
+
+  createWorkspaceFromSnapshot(workspace = {}, fallbackWorkspace = null) {
+    const fallback = fallbackWorkspace ? this.cloneWorkspace(fallbackWorkspace) : null;
+    const entryFileName = workspace?.entryFileName || fallback?.entryFileName || this.workspaceOptions.entryFileName;
+    const rawFiles = Array.isArray(workspace?.files)
+      ? workspace.files
+      : fallback?.files || [];
+    const files = [];
+    const usedNames = new Set();
+
+    const pushFile = (file, index) => {
+      const name = this.createUniqueWorkspaceFileName(file?.name, usedNames, index, file?.isEntry === true);
+      const existingFallback = fallback?.files?.find((candidate) => candidate.name === name);
+      const normalizedFile = {
+        name,
+        code: this.getDecodedCode(
+          typeof file?.code === 'string'
+            ? file.code
+            : existingFallback?.code || ''
+        ),
+        visible: file?.isEntry === true
+          ? true
+          : file?.visible !== false,
+        editable: file?.isEntry === true
+          ? true
+          : file?.editable !== false,
+        isEntry: file?.isEntry === true,
+      };
+
+      files.push(normalizedFile);
+    };
+
+    rawFiles.forEach((file, index) => pushFile(file, index));
+
+    if (!files.some((file) => file.isEntry)) {
+      const fallbackEntry = fallback?.files?.find((file) => file.isEntry) || null;
+      pushFile({
+        name: entryFileName,
+        code: workspace?.entryCode || fallbackEntry?.code || this.defaultCode,
+        visible: true,
+        editable: true,
+        isEntry: true,
+      }, files.length);
+    }
+
+    files.forEach((file) => {
+      if (file.name === entryFileName) {
+        file.isEntry = true;
+        file.visible = true;
+        file.editable = true;
+      }
+    });
+
+    const activeFileName = this.normalizeActiveFileName(
+      workspace?.activeFileName || fallback?.activeFileName,
+      files,
+      entryFileName,
+    );
+
+    return {
+      entryFileName,
+      activeFileName,
+      files,
+    };
+  }
+
+  cloneWorkspace(workspace = {}) {
+    return {
+      entryFileName: workspace.entryFileName || this.workspaceOptions.entryFileName,
+      activeFileName: workspace.activeFileName || workspace.entryFileName || this.workspaceOptions.entryFileName,
+      files: Array.isArray(workspace.files)
+        ? workspace.files.map((file) => ({ ...file }))
+        : [],
+    };
+  }
+
+  normalizeActiveFileName(activeFileName, files, entryFileName) {
+    const activeVisibleFile = files.find((file) => file.name === activeFileName && (file.visible !== false || file.isEntry));
+
+    if (activeVisibleFile) {
+      return activeVisibleFile.name;
+    }
+
+    return files.find((file) => file.name === entryFileName)?.name
+      || files.find((file) => file.visible !== false)?.name
+      || files[0]?.name
+      || entryFileName;
+  }
+
+  createUniqueWorkspaceFileName(name, usedNames, index, isEntry = false) {
+    const normalizedName = this.normalizeWorkspaceFileName(name, index, isEntry);
+
+    if (!usedNames.has(normalizedName)) {
+      usedNames.add(normalizedName);
+      return normalizedName;
+    }
+
+    const extension = this.getWorkspaceFileExtension(normalizedName);
+    const baseName = extension !== ''
+      ? normalizedName.slice(0, -extension.length)
+      : normalizedName;
+
+    let suffix = 2;
+    let candidate = `${baseName}_${suffix}${extension}`;
+
+    while (usedNames.has(candidate)) {
+      suffix += 1;
+      candidate = `${baseName}_${suffix}${extension}`;
+    }
+
+    usedNames.add(candidate);
+    return candidate;
+  }
+
+  normalizeWorkspaceFileName(name, index, isEntry = false) {
+    if (isEntry) {
+      return this.workspaceOptions.entryFileName;
+    }
+
+    const fallbackBaseName = `module_${index + 1}`;
+    const lastSegment = String(name || '')
+      .split(/[\\/]/)
+      .pop()
+      ?.trim() || '';
+    const baseName = lastSegment.replace(/\.py$/i, '');
+    const normalizedBaseName = baseName
+      .replace(/[^A-Za-z0-9_]/g, '_')
+      .replace(/^([^A-Za-z_]+)/, '')
+      .replace(/_+/g, '_')
+      .replace(/^$/, fallbackBaseName)
+      .replace(/^main$/, fallbackBaseName);
+
+    return `${normalizedBaseName}.py`;
+  }
+
+  getWorkspaceFileExtension(name = '') {
+    const lastDotIndex = String(name).lastIndexOf('.');
+
+    if (lastDotIndex <= 0) {
+      return '';
+    }
+
+    return name.slice(lastDotIndex);
+  }
+
+  getVisibleFiles() {
+    return this._workspace.files.filter((file) => file.visible !== false || file.isEntry);
+  }
+
+  renderFileTabs() {
+    if (!this._tabsElement) {
+      return;
+    }
+
+    const visibleFiles = this.getVisibleFiles();
+    this._tabsElement.hidden = visibleFiles.length <= 1;
+    this._tabsElement.replaceChildren();
+
+    visibleFiles.forEach((file) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'editor-file-tab';
+      button.dataset.fileName = file.name;
+      button.classList.toggle('is-active', file.name === this._workspace.activeFileName);
+      button.classList.toggle('is-readonly', file.editable === false);
+      button.textContent = file.name;
+
+      if (file.editable === false) {
+        button.title = `${file.name} (readonly)`;
+      }
+
+      button.addEventListener('click', () => this.setActiveFile(file.name));
+      this._tabsElement.appendChild(button);
+    });
+  }
+
+  setActiveFile(fileName) {
+    if (fileName === this._workspace.activeFileName) {
+      return;
+    }
+
+    const nextFile = this.findWorkspaceFile(fileName);
+
+    if (!nextFile || (nextFile.visible === false && !nextFile.isEntry)) {
+      return;
+    }
+
+    this.persistActiveFileCode();
+    this._workspace.activeFileName = nextFile.name;
+    this.renderFileTabs();
+    this.mountEditorForActiveFile();
+  }
+
+  mountEditorForActiveFile() {
+    const activeFile = this.getActiveFile();
+
+    if (!activeFile || !this._editorElement) {
+      return;
+    }
+
+    this._editorInstance?.destroy?.();
+    this._editorElement.innerHTML = '';
+    this._editorInstance = new CodeMirrorInstance(
+      this._editorElement ?? this.editorUID,
+      activeFile.code,
+      this.codingLanguage,
+      {
+        preCode: activeFile.isEntry ? this.getNormalizedPreCode() : '',
+        postCode: activeFile.isEntry ? this.getNormalizedPostCode() : '',
+        readonly: activeFile.editable === false,
+        lineHeightPx: 18,
+        minLines: this.getLineCount(this.getFileCode(activeFile.name, {
+          includeFixedCode: true,
+        })),
+        showLineNumbers: true,
+        resizeActionHandler: this.resizeActionHandler,
+        onChangeCallback: (code) => {
+          activeFile.code = this.extractEditableCode(code, activeFile);
+          this.onChangeCallback(this.getCode());
+        },
+        theme: this.theme,
+        isConsole: false,
+      }
+    );
+  }
+
+  persistActiveFileCode() {
+    const activeFile = this.getActiveFile();
+
+    if (!activeFile || !this._editorInstance?.getCode) {
+      return;
+    }
+
+    activeFile.code = this.extractEditableCode(this._editorInstance.getCode(), activeFile);
+  }
+
+  getActiveFile() {
+    if (!this._workspace) {
+      return null;
+    }
+
+    return this.findWorkspaceFile(this._workspace.activeFileName)
+      || this.findWorkspaceFile(this._workspace.entryFileName)
+      || this._workspace.files[0]
+      || null;
+  }
+
+  findWorkspaceFile(fileName) {
+    return this._workspace.files.find((file) => file.name === fileName);
+  }
+
+  getFileCode(fileName, { includeFixedCode = false } = {}) {
+    const file = this.findWorkspaceFile(fileName)
+      || this.findWorkspaceFile(this.workspaceOptions.entryFileName);
+
+    if (!file) {
+      return '';
+    }
+
+    if (!includeFixedCode || !file.isEntry) {
+      return file.code;
+    }
+
+    return `${this.getNormalizedPreCode()}${file.code}${this.getNormalizedPostCode()}`;
+  }
+
+  extractEditableCode(code, file) {
+    let nextCode = String(code || '');
+
+    if (!file?.isEntry) {
+      return nextCode;
+    }
+
+    const normalizedPreCode = this.getNormalizedPreCode();
+    const normalizedPostCode = this.getNormalizedPostCode();
+
+    if (normalizedPreCode && nextCode.startsWith(normalizedPreCode)) {
+      nextCode = nextCode.slice(normalizedPreCode.length);
+    }
+
+    if (normalizedPostCode && nextCode.endsWith(normalizedPostCode)) {
+      nextCode = nextCode.slice(0, -normalizedPostCode.length);
+    }
+
+    return nextCode;
+  }
+
+  getNormalizedPreCode() {
+    if (!this.preCode) {
+      return '';
+    }
+
+    return this.preCode.endsWith('\n')
+      ? this.preCode
+      : `${this.preCode}\n`;
+  }
+
+  getNormalizedPostCode() {
+    if (!this.postCode) {
+      return '';
+    }
+
+    return this.postCode.startsWith('\n')
+      ? this.postCode
+      : `\n${this.postCode}`;
+  }
+
+  getLineCount(code = '') {
+    const normalizedCode = String(code || '');
+    return Math.max(1, normalizedCode.split(/\r\n|\r|\n/).length);
   }
 }

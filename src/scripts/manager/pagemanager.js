@@ -6,6 +6,7 @@ export default class PageManager {
     this.parent = this.getParent();
     this.pageChangeHandlers = [];
     this.resizeActionHandler = resizeActionHandler;
+    this.activePageName = null;
   }
 
   getParent() {
@@ -37,14 +38,42 @@ export default class PageManager {
     }
   }
 
+  /**
+   * Sets the content of a page. The content can be provided either as an HTML
+   * string or as a DocumentFragment.
+   * If the page already exists, its content will be replaced. If it does not
+   * exist, a new container element will be created and appended.
+   * @param {string} pageName - The identifier of the page.
+   * @param {string | DocumentFragment} content - HTML string or DocumentFragment
+   *   representing the new page content.
+   * @returns {void}
+   * @throws {TypeError} If content is neither a string nor a DocumentFragment.
+   */
   setContent(pageName, content) {
     const page = this.getPage(pageName);
+
+    const applyContent = (target) => {
+      if (typeof content === 'string') {
+        target.innerHTML = content;
+        return;
+      }
+
+      if (content instanceof DocumentFragment) {
+        target.replaceChildren(content.cloneNode(true));
+        return;
+      }
+
+      throw new TypeError(
+        'Invalid content: expected a string or DocumentFragment.'
+      );
+    };
+
     if (page) {
-      page.innerHTML = content;
+      applyContent(page);
     }
     else {
       const div = document.createElement('div');
-      div.innerHTML = content;
+      applyContent(div);
       this.appendChild(pageName, div);
     }
   }
@@ -79,6 +108,31 @@ export default class PageManager {
       this.resizeActionHandler();
     }
   }
+
+  /**
+   * Registers multiple pages in declaration order.
+   * @param {object[]} [pageConfigs] - Page definitions.
+   * @returns {HTMLDivElement[]} Created page elements.
+   */
+  addPages(pageConfigs = []) {
+    return pageConfigs.map((pageConfig) => this.registerPage(pageConfig));
+  }
+
+  /**
+   * Registers a page from a configuration object.
+   * @param {object} pageConfig - Declarative page definition.
+   * @returns {HTMLDivElement} Created page element.
+   */
+  registerPage(pageConfig = {}) {
+    return this.addPage(
+      pageConfig.name,
+      pageConfig.content,
+      pageConfig.additionalClass,
+      pageConfig.front,
+      pageConfig.visible,
+    );
+  }
+
   /**
    * Add a Page
    * @param {string} pageName The name of page
@@ -89,6 +143,14 @@ export default class PageManager {
    * @returns {HTMLDivElement} div Element with the page-content
    */
   addPage(pageName, content, additionalClass, front = false, visible = true) {
+    if (!pageName) {
+      throw new Error('pageName is required');
+    }
+
+    if (this.pages.some((page) => page.name === pageName)) {
+      throw new Error(`Page '${pageName}' is already registered.`);
+    }
+
     const pageDiv = document.createElement('div');
     pageDiv.classList.add('page', `page-${pageName}`);
     if (additionalClass) pageDiv.classList.add(additionalClass);
@@ -128,6 +190,8 @@ export default class PageManager {
     const exists = this.pages.some((page) => page.name === pageName);
     if (!exists) return;
 
+    this.activePageName = pageName;
+
     this.pages.forEach((el) => {
       if (!el.dom) return; // fallback
       if (el.name === pageName) {
@@ -138,16 +202,14 @@ export default class PageManager {
         el.dom.style.display = 'none';
         el.active = false;
       }
-      this.pageChangeHandlers.forEach((el) => el());
-
     });
+
+    this.pageChangeHandlers.forEach((handler) => handler(pageName));
     this.resizeActionHandler();
   }
 
   async setupPages() {
-    this.getDefaultPages().forEach((el) => {
-      this.addPage(el.name, el.content, el.additionalClass, false, el.visible);
-    });
+    this.addPages(this.getDefaultPages());
   }
 
   /**
