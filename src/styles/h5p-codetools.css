@@ -6,9 +6,9 @@
   --code-surface-border: lightgray;
   --code-surface-text: #0f172a;
   --code-muted-text: #475569;
-  --code-tab-bg: #e2e8f0;
-  --code-tab-hover-bg: #d4dee9;
-  --code-tab-text: #334155;
+  --code-tab-bg: #e8edf3;
+  --code-tab-hover-bg: #dde5ef;
+  --code-tab-text: #475569;
   --code-button-bg: #457cd3;
   --code-button-hover: #062351;
   --code-button-text: #fff;
@@ -34,9 +34,9 @@
   --code-surface-border: #334155;
   --code-surface-text: #e2e8f0;
   --code-muted-text: #94a3b8;
-  --code-tab-bg: #1e293b;
-  --code-tab-hover-bg: #334155;
-  --code-tab-text: #cbd5e1;
+  --code-tab-bg: #1f2937;
+  --code-tab-hover-bg: #273244;
+  --code-tab-text: #b9c6d8;
   --code-button-bg: #334155;
   --code-button-hover: #475569;
   --code-button-text: #f8fafc;
@@ -162,7 +162,7 @@
   flex-wrap: nowrap;
   gap: 0;
   margin: 0;
-  padding: 8px 8px 0;
+  padding: 6px 6px 0;
   border-bottom: 1px solid var(--code-surface-border);
   overflow-x: auto;
   overflow-y: hidden;
@@ -174,19 +174,23 @@
   border-bottom: 0;
   background-color: var(--code-tab-bg);
   color: var(--code-tab-text);
-  border-radius: 6px 6px 0 0;
-  padding: 8px 14px;
-  font-size: 13px;
+  border-radius: 4px 4px 0 0;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
   line-height: 1.2;
   cursor: pointer;
-  margin: 0 2px 0 0;
+  margin: 0 1px 0 0;
   position: relative;
   top: 1px;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
 }
 
 .code_container .editor-file-tab.is-active {
   background-color: var(--code-surface-bg);
   border-color: var(--code-surface-border);
+  border-bottom-color: var(--code-surface-bg);
   color: var(--code-surface-text);
 }
 
@@ -194,12 +198,17 @@
   border-style: dashed;
 }
 
-.code_container .editor-file-tab:hover {
+.code_container .editor-file-tab:not(.is-active):hover {
   background-color: var(--code-tab-hover-bg);
 }
 
 .code_container .editor-file-tab.is-active:hover {
   background-color: var(--code-surface-bg);
+}
+
+.code_container .editor-file-tab:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: -2px;
 }
 
 
