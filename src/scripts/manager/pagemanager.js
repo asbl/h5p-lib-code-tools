@@ -100,6 +100,12 @@ export default class PageManager {
 
     const pageObj = this.getPageObj(pageName);
 
+    // If page doesn't exist, create it first
+    if (!pageObj) {
+      this.addPage(pageName, '', '', false, false);
+      return this.appendChild(pageName, element); // Recursive call after creation
+    }
+
     // Append the element to the page DOM
     pageObj.dom.appendChild(element);
 

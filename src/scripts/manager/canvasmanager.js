@@ -14,7 +14,6 @@ export default class CanvasManager {
     this.canvasWrapper.innerHTML = '';
     // Null out references so a fresh wrapper is created on next attachment
     this.canvasWrapper = null;
-    this.hasCanvas = false;
     this.canvasDiv = null;
   }
   /**
