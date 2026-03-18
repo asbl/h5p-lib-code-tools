@@ -143,6 +143,19 @@ export default class ConsoleManager {
   }
 
   /**
+   * Disposes the console editor instance.
+   * @returns {void}
+   */
+  destroy() {
+    this._consoleInstance?.destroy?.();
+    this._consoleInstance = null;
+
+    if (this._consoleElement) {
+      this._consoleElement.innerHTML = '';
+    }
+  }
+
+  /**
    * Applies a new console theme.
    * @param {string} theme Theme variant.
    */

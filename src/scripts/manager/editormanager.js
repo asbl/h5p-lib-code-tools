@@ -190,6 +190,20 @@ export default class EditorManager {
   }
 
   /**
+   * Persists the active code and disposes the mounted editor instance.
+   * @returns {void}
+   */
+  destroy() {
+    this.persistActiveFileCode();
+    this._editorInstance?.destroy?.();
+    this._editorInstance = null;
+
+    if (this._editorElement) {
+      this._editorElement.innerHTML = '';
+    }
+  }
+
+  /**
    * Applies a new editor theme.
    * @param {string} theme Theme variant.
    */

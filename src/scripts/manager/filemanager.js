@@ -144,6 +144,23 @@ export default class FileManager {
   }
 
   /**
+   * Disposes managed files and frees created blob URLs.
+   * @returns {void}
+   */
+  destroy() {
+    this.disposeFiles(this.files);
+    this.files = [];
+
+    if (this.fileList) {
+      this.fileList.replaceChildren();
+    }
+
+    if (this.emptyState) {
+      this.emptyState.hidden = false;
+    }
+  }
+
+  /**
    * Returns the registry variable name used inside runtimes.
    * @returns {string} Runtime registry variable name.
    */

@@ -167,6 +167,58 @@ describe('CodeContainer theme toggle', () => {
     expect(container.unsetFullscreen).not.toHaveBeenCalled();
   });
 
+  it('unregisters fullscreen exit listeners when destroyed', () => {
+    const h5pInstance = {};
+    H5P.on = vi.fn();
+    H5P.off = vi.fn();
+
+    const container = createContainer({ h5pInstance });
+    container.registerFullscreenExitHandler();
+    container.destroy();
+
+    expect(H5P.off).toHaveBeenCalledWith(
+      h5pInstance,
+      'exitFullScreen',
+      container.handleFullscreenExit,
+    );
+  });
+
+  it('releases manager resources and removes the container DOM on destroy', () => {
+    const container = createContainer();
+    const host = document.createElement('div');
+    container.containerDiv = document.createElement('div');
+    host.appendChild(container.containerDiv);
+
+    container._observerManager = { disconnectAll: vi.fn() };
+    container._imageManager = { destroy: vi.fn() };
+    container._soundManager = { destroy: vi.fn() };
+    container._editorManager = { destroy: vi.fn() };
+    container._consoleManager = { destroy: vi.fn() };
+
+    container.destroy();
+
+    expect(container._observerManager.disconnectAll).toHaveBeenCalledTimes(1);
+    expect(container._imageManager.destroy).toHaveBeenCalledTimes(1);
+    expect(container._soundManager.destroy).toHaveBeenCalledTimes(1);
+    expect(container._editorManager.destroy).toHaveBeenCalledTimes(1);
+    expect(container._consoleManager.destroy).toHaveBeenCalledTimes(1);
+    expect(host.children).toHaveLength(0);
+    expect(container.containerDiv).toBeNull();
+  });
+
+  it('leaves fullscreen before teardown when destroy is called in fullscreen mode', () => {
+    const container = createContainer();
+    container.fullscreen = true;
+    container.unsetFullscreen = vi.fn();
+
+    container.destroy();
+
+    expect(container.unsetFullscreen).toHaveBeenCalledWith({
+      skipNativeExit: false,
+      source: 'destroy',
+    });
+  });
+
   it('renders a single instructions wrapper around the instructions panel', () => {
     vi.useFakeTimers();
 

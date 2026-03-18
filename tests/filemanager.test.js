@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import FileManager from '../src/scripts/manager/filemanager.js';
 
@@ -14,6 +14,13 @@ const l10n = {
   filesDefaultName: 'file',
 };
 
+/**
+ * Creates a mock browser file for upload-manager tests.
+ * @param {string} name File name.
+ * @param {string} [content] Text payload.
+ * @param {string} [type] MIME type.
+ * @returns {{name: string, type: string, size: number, arrayBuffer: () => Promise<ArrayBuffer>}} Mock file object.
+ */
 function createFile(name, content = 'data', type = 'text/plain') {
   const bytes = new TextEncoder().encode(content);
 
@@ -162,6 +169,23 @@ describe('FileManager', () => {
 
       expect(manager.getFiles()).toHaveLength(0);
       expect(URL.revokeObjectURL).toHaveBeenCalledWith(oldFile.objectUrl);
+    });
+  });
+
+  describe('destroy', () => {
+    it('revokes object URLs for all managed files and clears state', async () => {
+      await manager.addFiles([
+        createFile('first.txt'),
+        createFile('second.txt'),
+      ]);
+
+      const objectUrls = manager.getFiles().map((file) => file.objectUrl);
+
+      manager.destroy();
+
+      expect(manager.getFiles()).toHaveLength(0);
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith(objectUrls[0]);
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith(objectUrls[1]);
     });
   });
 

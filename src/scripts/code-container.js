@@ -50,6 +50,7 @@ export default class CodeContainer {
     this.parent.id = H5P.createUUID();
     this.fullscreen = false;
     this._fullscreenExitHandlerRegistered = false;
+    this._fullscreenExitHandlerScope = null;
 
     this.handleFullscreenExit = () => {
       if (!this.fullscreen || typeof this.unsetFullscreen !== 'function') {
@@ -331,13 +332,35 @@ export default class CodeContainer {
     if (this.h5pInstance && typeof H5P.on === 'function') {
       H5P.on(this.h5pInstance, 'exitFullScreen', this.handleFullscreenExit);
       this._fullscreenExitHandlerRegistered = true;
+      this._fullscreenExitHandlerScope = 'instance';
       return;
     }
 
     if (H5P.externalDispatcher?.on) {
       H5P.externalDispatcher.on('exitFullScreen', this.handleFullscreenExit);
       this._fullscreenExitHandlerRegistered = true;
+      this._fullscreenExitHandlerScope = 'external';
     }
+  }
+
+  unregisterFullscreenExitHandler() {
+    if (!this._fullscreenExitHandlerRegistered) {
+      return;
+    }
+
+    if (this._fullscreenExitHandlerScope === 'instance'
+      && this.h5pInstance
+      && typeof H5P.off === 'function') {
+      H5P.off(this.h5pInstance, 'exitFullScreen', this.handleFullscreenExit);
+    }
+
+    if (this._fullscreenExitHandlerScope === 'external'
+      && H5P.externalDispatcher?.off) {
+      H5P.externalDispatcher.off('exitFullScreen', this.handleFullscreenExit);
+    }
+
+    this._fullscreenExitHandlerRegistered = false;
+    this._fullscreenExitHandlerScope = null;
   }
 
   mergeUIRegistrations(...definitions) {
@@ -680,6 +703,29 @@ export default class CodeContainer {
       this.getConsoleManager(this.parent, this.options).getHTMLClasses(),
       this.getInstructionsManager(this.parent, this.options).getHTMLClasses(),
     ].join(' ');
+  }
+
+  /**
+   * Releases observers, editor instances, and uploaded-file object URLs.
+   * @returns {void}
+   */
+  destroy() {
+    this._runtime?.stop?.();
+
+    if (this.fullscreen && typeof this.unsetFullscreen === 'function') {
+      this.unsetFullscreen({ skipNativeExit: false, source: 'destroy' });
+    }
+
+    this._observerManager?.disconnectAll?.();
+    this.unregisterFullscreenExitHandler();
+
+    this._imageManager?.destroy?.();
+    this._soundManager?.destroy?.();
+    this._editorManager?.destroy?.();
+    this._consoleManager?.destroy?.();
+
+    this.containerDiv?.remove?.();
+    this.containerDiv = null;
   }
 
   waitForImages(root) {
