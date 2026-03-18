@@ -10,12 +10,12 @@ export default class CanvasManager {
 
   removeCanvas() {
     if (!this.canvasWrapper) return;
-    // Remove the canvas wrapper completely from the DOM
-    if (this.canvasWrapper.parentNode) {
-      this.canvasWrapper.parentNode.removeChild(this.canvasWrapper);
-    }
+    // Clear all children from the canvas wrapper (p5, turtle, loading overlay)
+    this.canvasWrapper.innerHTML = '';
+    // Null out references so a fresh wrapper is created on next attachment
     this.canvasWrapper = null;
     this.hasCanvas = false;
+    this.canvasDiv = null;
   }
   /**
    *
