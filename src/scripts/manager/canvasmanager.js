@@ -10,7 +10,12 @@ export default class CanvasManager {
 
   removeCanvas() {
     if (!this.canvasWrapper) return;
-    this.canvasWrapper.innerHTML = '';
+    // Remove the canvas wrapper completely from the DOM
+    if (this.canvasWrapper.parentNode) {
+      this.canvasWrapper.parentNode.removeChild(this.canvasWrapper);
+    }
+    this.canvasWrapper = null;
+    this.hasCanvas = false;
   }
   /**
    *

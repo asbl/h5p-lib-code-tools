@@ -268,7 +268,9 @@ describe('CanvasManager', () => {
     expect(pageManager.showPage).toHaveBeenCalledWith('canvas');
 
     manager.removeCanvas();
-    expect(canvasWrapper.innerHTML).toBe('');
+    // Verify that the wrapper is removed from DOM and reference is cleared
+    expect(manager.canvasWrapper).toBeNull();
+    expect(manager.hasCanvas).toBe(false);
   });
 });
 
