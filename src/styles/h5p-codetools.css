@@ -6,6 +6,9 @@
   --code-surface-border: lightgray;
   --code-surface-text: #0f172a;
   --code-muted-text: #475569;
+  --code-tab-bg: #e2e8f0;
+  --code-tab-hover-bg: #d4dee9;
+  --code-tab-text: #334155;
   --code-button-bg: #457cd3;
   --code-button-hover: #062351;
   --code-button-text: #fff;
@@ -31,6 +34,9 @@
   --code-surface-border: #334155;
   --code-surface-text: #e2e8f0;
   --code-muted-text: #94a3b8;
+  --code-tab-bg: #1e293b;
+  --code-tab-hover-bg: #334155;
+  --code-tab-text: #cbd5e1;
   --code-button-bg: #334155;
   --code-button-hover: #475569;
   --code-button-text: #f8fafc;
@@ -152,27 +158,36 @@
 
 .code_container .editor-file-tabs {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
+  align-items: flex-end;
+  flex-wrap: nowrap;
+  gap: 0;
+  margin: 0;
+  padding: 8px 8px 0;
+  border-bottom: 1px solid var(--code-surface-border);
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .code_container .editor-file-tab {
   appearance: none;
-  border: 1px solid var(--code-surface-border);
-  background-color: var(--code-surface-bg);
-  color: var(--code-surface-text);
-  border-radius: 999px;
-  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  background-color: var(--code-tab-bg);
+  color: var(--code-tab-text);
+  border-radius: 6px 6px 0 0;
+  padding: 8px 14px;
   font-size: 13px;
   line-height: 1.2;
   cursor: pointer;
+  margin: 0 2px 0 0;
+  position: relative;
+  top: 1px;
 }
 
 .code_container .editor-file-tab.is-active {
-  background-color: var(--code-button-bg);
-  border-color: var(--code-button-bg);
-  color: var(--code-button-text);
+  background-color: var(--code-surface-bg);
+  border-color: var(--code-surface-border);
+  color: var(--code-surface-text);
 }
 
 .code_container .editor-file-tab.is-readonly {
@@ -180,7 +195,11 @@
 }
 
 .code_container .editor-file-tab:hover {
-  border-color: var(--code-button-bg);
+  background-color: var(--code-tab-hover-bg);
+}
+
+.code_container .editor-file-tab.is-active:hover {
+  background-color: var(--code-surface-bg);
 }
 
 
