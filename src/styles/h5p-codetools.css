@@ -574,6 +574,11 @@
   color: var(--code-surface-text);
   border-radius: 5px;
   overflow: auto;
+  display: none;
+}
+
+.code_container .page.active {
+  display: block;
 }
 
 .code_container .instructions-container {
@@ -863,4 +868,128 @@
   .code_container .sound-manager__audio {
     min-width: 0;
   }
+}
+
+/* ─── Blockly editor host ──────────────────────────────────────────────────── */
+
+.blockly-editor-host {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 200px;
+  position: relative;
+}
+
+/* Blockly workspace container */
+.blockly-workspace {
+  flex: 1;
+  width: 100%;
+  min-height: 200px;
+  overflow: hidden;
+}
+
+.blockly-workspace--blocks-only {
+  height: 400px;
+}
+
+.blockly-workspace--both {
+  height: 360px;
+}
+
+/* Toggle bar for "both" mode */
+.blockly-toggle-bar {
+  display: flex;
+  gap: 2px;
+  padding: 4px 4px 0;
+  background: #f0f0f0;
+  border-bottom: 1px solid #ccc;
+}
+
+.blockly-toggle-btn {
+  padding: 4px 14px;
+  border: 1px solid #bbb;
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  background: #e8e8e8;
+  cursor: pointer;
+  font-size: 0.85em;
+  font-weight: 500;
+  color: #444;
+  transition: background 0.15s;
+}
+
+.blockly-toggle-btn:hover {
+  background: #d8d8d8;
+}
+
+.blockly-toggle-btn.is-active {
+  background: #fff;
+  color: #1a1a1a;
+  border-color: #999;
+  z-index: 1;
+}
+
+/* Generated code preview (read-only, "both" mode) */
+.blockly-code-preview {
+  flex: 1;
+  margin: 0;
+  padding: 10px 14px;
+  background: #f8f8f8;
+  color: #1a1a1a;
+  font-family: 'Fira Mono', 'Consolas', 'Courier New', monospace;
+  font-size: 0.9em;
+  line-height: 1.5;
+  overflow: auto;
+  white-space: pre;
+  min-height: 200px;
+  border-top: 1px solid #ddd;
+}
+
+/* Warning for unsupported languages */
+.blockly-unsupported-msg {
+  padding: 8px 12px;
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 4px;
+  color: #664d03;
+  font-size: 0.85em;
+  margin-bottom: 6px;
+}
+
+/* Dark theme overrides */
+.blockly-theme-dark .blockly-toggle-bar {
+  background: #2d2d2d;
+  border-color: #444;
+}
+
+.blockly-theme-dark .blockly-toggle-btn {
+  background: #3a3a3a;
+  border-color: #555;
+  color: #ccc;
+}
+
+.blockly-theme-dark .blockly-toggle-btn:hover {
+  background: #444;
+}
+
+.blockly-theme-dark .blockly-toggle-btn.is-active {
+  background: #1e1e1e;
+  color: #e0e0e0;
+  border-color: #666;
+}
+
+.blockly-theme-dark .blockly-code-preview {
+  background: #1e1e1e;
+  color: #d4d4d4;
+  border-color: #444;
+}
+
+/* Fullscreen adjustments */
+.h5p-fullscreen .blockly-workspace--blocks-only,
+.h5p-fullscreen .blockly-workspace--both {
+  height: 100%;
+}
+
+.h5p-fullscreen .blockly-editor-host {
+  height: 100%;
 }

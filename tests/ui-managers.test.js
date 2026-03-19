@@ -146,7 +146,7 @@ describe('PageManager', () => {
     expect(manager.activePageName).toBe('images');
     expect(manager.pageIsActive('images')).toBe(true);
     expect(manager.pageIsActive('code')).toBe(false);
-    expect(manager.getPage('images').style.display).toBe('block');
+    expect(manager.getPage('images').classList.contains('active')).toBe(true);
     expect(resizeActionHandler).toHaveBeenCalled();
   });
 

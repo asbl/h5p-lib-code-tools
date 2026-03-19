@@ -172,12 +172,8 @@ export default class PageManager {
       console.warn('Unsupported content type for page:', pageName);
     }
 
-    if (visible === false) {
-      pageDiv.style.display = 'none';
-    }
-
-    // Hide by default
-    pageDiv.style.display = 'none';
+    // All pages hidden by default (CSS will control display via .active class)
+    // Don't set inline styles to avoid specificity conflicts
     // Insert into array pages
     if (!front) {
       this.pages.push({ name: pageName, dom: pageDiv, active: false });
@@ -201,11 +197,11 @@ export default class PageManager {
     this.pages.forEach((el) => {
       if (!el.dom) return; // fallback
       if (el.name === pageName) {
-        el.dom.style.display = 'block';
+        el.dom.classList.add('active');
         el.active = true;
       }
       else {
-        el.dom.style.display = 'none';
+        el.dom.classList.remove('active');
         el.active = false;
       }
     });

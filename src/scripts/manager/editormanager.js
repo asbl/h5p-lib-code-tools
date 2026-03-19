@@ -1,4 +1,13 @@
 import CodeMirrorInstance from '../editor/codemirror-instance';
+import BlocklyEditorInstance from '../editor/blockly-instance.js';
+
+/**
+ * Supported editor mode identifiers.
+ * - 'code'   → CodeMirror (default)
+ * - 'blocks' → Blockly workspace only
+ * - 'both'   → Blockly workspace + read-only generated-code preview
+ */
+const EDITOR_MODES = ['code', 'blocks', 'both'];
 
 export default class EditorManager {
   constructor(
@@ -75,6 +84,11 @@ export default class EditorManager {
     this._isFileManagerActive = false;
     this._defaultWorkspace = this.createDefaultWorkspace();
     this._workspace = this.cloneWorkspace(this._defaultWorkspace);
+
+    // Editor mode: 'code' | 'blocks' | 'both'
+    this.editorMode = EDITOR_MODES.includes(workspaceOptions?.editorMode)
+      ? workspaceOptions.editorMode
+      : 'code';
   }
 
   /**
@@ -753,28 +767,45 @@ export default class EditorManager {
 
     this._editorInstance?.destroy?.();
     this._editorElement.innerHTML = '';
-    this._editorInstance = new CodeMirrorInstance(
-      this._editorElement ?? this.editorUID,
-      activeFile.code,
-      this.codingLanguage,
-      {
-        preCode: activeFile.isEntry ? this.getNormalizedPreCode() : '',
-        postCode: activeFile.isEntry ? this.getNormalizedPostCode() : '',
-        readonly: activeFile.editable === false,
-        lineHeightPx: 18,
-        minLines: this.getLineCount(this.getFileCode(activeFile.name, {
-          includeFixedCode: true,
-        })),
-        showLineNumbers: true,
-        resizeActionHandler: this.resizeActionHandler,
-        onChangeCallback: (code) => {
-          activeFile.code = this.extractEditableCode(code, activeFile);
-          this.onChangeCallback(this.getCode());
-        },
-        theme: this.theme,
-        isConsole: false,
-      }
-    );
+
+    const sharedOptions = {
+      preCode: activeFile.isEntry ? this.getNormalizedPreCode() : '',
+      postCode: activeFile.isEntry ? this.getNormalizedPostCode() : '',
+      readonly: activeFile.editable === false,
+      lineHeightPx: 18,
+      resizeActionHandler: this.resizeActionHandler,
+      onChangeCallback: (code) => {
+        activeFile.code = this.extractEditableCode(code, activeFile);
+        this.onChangeCallback(this.getCode());
+      },
+      theme: this.theme,
+    };
+
+    if (this.editorMode === 'blocks' || this.editorMode === 'both') {
+      this._editorInstance = new BlocklyEditorInstance(
+        this._editorElement,
+        activeFile.code,
+        this.codingLanguage,
+        {
+          ...sharedOptions,
+          editorMode: this.editorMode,
+        }
+      );
+    } else {
+      this._editorInstance = new CodeMirrorInstance(
+        this._editorElement ?? this.editorUID,
+        activeFile.code,
+        this.codingLanguage,
+        {
+          ...sharedOptions,
+          minLines: this.getLineCount(this.getFileCode(activeFile.name, {
+            includeFixedCode: true,
+          })),
+          showLineNumbers: true,
+          isConsole: false,
+        }
+      );
+    }
   }
 
   persistActiveFileCode() {

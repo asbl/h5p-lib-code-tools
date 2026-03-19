@@ -54,6 +54,7 @@
     "@codemirror/view": "^6.15.0",
     "@fortawesome/fontawesome-svg-core": "^6.4.0",
     "@fortawesome/free-solid-svg-icons": "^6.4.0",
+    "blockly": "^12.4.1",
     "caniuse-lite": "^1.0.30001585",
     "dompurify": "^3.0.6",
     "he": "^1.2.0",

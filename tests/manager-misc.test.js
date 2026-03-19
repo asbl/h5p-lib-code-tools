@@ -26,12 +26,38 @@ const { CodeMirrorInstanceMock, codeMirrorInstances } = vi.hoisted(() => {
   return { CodeMirrorInstanceMock, codeMirrorInstances };
 });
 
+const { BlocklyEditorInstanceMock, blocklyInstances } = vi.hoisted(() => {
+  const blocklyInstances = [];
+  const BlocklyEditorInstanceMock = vi.fn().mockImplementation((target, content, language, options = {}) => {
+    const instance = {
+      target,
+      content,
+      language,
+      options,
+      getCode: vi.fn(() => '# generated'),
+      setCode: vi.fn(),
+      destroy: vi.fn(),
+      setFixedLines: vi.fn(),
+      restoreDynamicHeight: vi.fn(),
+      setTheme: vi.fn(),
+    };
+    blocklyInstances.push(instance);
+    return instance;
+  });
+
+  return { BlocklyEditorInstanceMock, blocklyInstances };
+});
+
 vi.mock('../src/scripts/editor/codemirror-instance', () => ({
   default: CodeMirrorInstanceMock,
 }));
 
 vi.mock('@scripts/editor/codemirror-instance.js', () => ({
   default: CodeMirrorInstanceMock,
+}));
+
+vi.mock('../src/scripts/editor/blockly-instance.js', () => ({
+  default: BlocklyEditorInstanceMock,
 }));
 
 import CanvasManager from '../src/scripts/manager/canvasmanager.js';
@@ -43,6 +69,8 @@ describe('EditorManager', () => {
   beforeEach(() => {
     CodeMirrorInstanceMock.mockClear();
     codeMirrorInstances.length = 0;
+    BlocklyEditorInstanceMock.mockClear();
+    blocklyInstances.length = 0;
   });
 
   it('creates a CodeMirror editor and forwards updates to it', async () => {
@@ -199,6 +227,74 @@ describe('EditorManager', () => {
     expect(manager._tabsElement.hidden).toBe(false);
     const tabTexts = Array.from(manager._tabsElement.querySelectorAll('button')).map((b) => b.textContent);
     expect(tabTexts).toEqual(['main.py', 'helper.py']);
+  });
+
+  it('uses CodeMirrorInstance when editorMode is "code" (default)', async () => {
+    const manager = new EditorManager(
+      'print(1)', 'python', '', '', true, 5, 'editor', 'pre', 'post',
+      vi.fn(), vi.fn(), 'light',
+      { editorMode: 'code' },
+    );
+    manager.getDOM();
+    await manager.setupEditors();
+
+    expect(CodeMirrorInstanceMock).toHaveBeenCalledTimes(1);
+    expect(BlocklyEditorInstanceMock).not.toHaveBeenCalled();
+    expect(manager.editorMode).toBe('code');
+  });
+
+  it('uses CodeMirrorInstance when editorMode is omitted (backward compat)', async () => {
+    const manager = new EditorManager(
+      'print(1)', 'python', '', '', true, 5, 'editor', 'pre', 'post',
+    );
+    manager.getDOM();
+    await manager.setupEditors();
+
+    expect(CodeMirrorInstanceMock).toHaveBeenCalledTimes(1);
+    expect(BlocklyEditorInstanceMock).not.toHaveBeenCalled();
+    expect(manager.editorMode).toBe('code');
+  });
+
+  it('uses BlocklyEditorInstance when editorMode is "blocks"', async () => {
+    const manager = new EditorManager(
+      'print(1)', 'python', '', '', true, 5, 'editor', 'pre', 'post',
+      vi.fn(), vi.fn(), 'light',
+      { editorMode: 'blocks' },
+    );
+    manager.getDOM();
+    await manager.setupEditors();
+
+    expect(BlocklyEditorInstanceMock).toHaveBeenCalledTimes(1);
+    expect(CodeMirrorInstanceMock).not.toHaveBeenCalled();
+    expect(BlocklyEditorInstanceMock.mock.calls[0][3].editorMode).toBe('blocks');
+  });
+
+  it('uses BlocklyEditorInstance with editorMode "both" in both-panel mode', async () => {
+    const manager = new EditorManager(
+      'print(1)', 'python', '', '', true, 5, 'editor', 'pre', 'post',
+      vi.fn(), vi.fn(), 'light',
+      { editorMode: 'both' },
+    );
+    manager.getDOM();
+    await manager.setupEditors();
+
+    expect(BlocklyEditorInstanceMock).toHaveBeenCalledTimes(1);
+    expect(CodeMirrorInstanceMock).not.toHaveBeenCalled();
+    expect(BlocklyEditorInstanceMock.mock.calls[0][3].editorMode).toBe('both');
+  });
+
+  it('rejects unknown editorMode and falls back to "code"', async () => {
+    const manager = new EditorManager(
+      'print(1)', 'python', '', '', true, 5, 'editor', 'pre', 'post',
+      vi.fn(), vi.fn(), 'light',
+      { editorMode: 'unknown_value' },
+    );
+    manager.getDOM();
+    await manager.setupEditors();
+
+    expect(manager.editorMode).toBe('code');
+    expect(CodeMirrorInstanceMock).toHaveBeenCalledTimes(1);
+    expect(BlocklyEditorInstanceMock).not.toHaveBeenCalled();
   });
 });
 

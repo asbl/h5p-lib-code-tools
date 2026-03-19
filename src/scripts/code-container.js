@@ -153,6 +153,7 @@ export default class CodeContainer {
           entryFileName: options?.entryFileName || 'main.py',
           allowAddingFiles: options?.allowAddingFiles === true,
           sourceFiles: Array.isArray(options?.sourceFiles) ? options.sourceFiles : [],
+          editorMode: options?.editorMode || 'code',
         },
       );
     }
@@ -579,11 +580,11 @@ export default class CodeContainer {
       ? projectBundle.sourceFiles
         .filter((file) => typeof file?.name === 'string' && file.name.trim() !== '')
         .map((file) => ({
-        name: file.name,
-        code: typeof file.code === 'string' ? file.code : '',
-        visible: file.visible !== false,
-        editable: file.editable !== false,
-        isEntry: file.isEntry === true,
+          name: file.name,
+          code: typeof file.code === 'string' ? file.code : '',
+          visible: file.visible !== false,
+          editable: file.editable !== false,
+          isEntry: file.isEntry === true,
         }))
       : [];
 
