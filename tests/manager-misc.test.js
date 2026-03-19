@@ -229,6 +229,49 @@ describe('EditorManager', () => {
     expect(tabTexts).toEqual(['main.py', 'helper.py']);
   });
 
+  it('exposes the file manager as standalone DOM and routes open/close via callbacks', async () => {
+    const onOpenFileManager = vi.fn();
+    const onCloseFileManager = vi.fn();
+    const manager = new EditorManager(
+      'print(1)',
+      'python',
+      '',
+      '',
+      true,
+      5,
+      'editor-files',
+      'pre-files',
+      'post-files',
+      vi.fn(),
+      vi.fn(),
+      'light',
+      {
+        enabled: true,
+        entryFileName: 'main.py',
+        allowAddingFiles: true,
+        onOpenFileManager,
+        onCloseFileManager,
+      },
+    );
+
+    const dom = manager.getDOM();
+    document.body.appendChild(dom);
+    await manager.setupEditors();
+
+    const fileManagerDom = manager.getFileManagerDOM();
+
+    expect(fileManagerDom).toBeInstanceOf(HTMLElement);
+    expect(manager._wrapperElement.contains(fileManagerDom)).toBe(false);
+
+    manager.openFileManager();
+    expect(onOpenFileManager).toHaveBeenCalledTimes(1);
+    expect(manager._isFileManagerActive).toBe(true);
+
+    manager.closeFileManager();
+    expect(onCloseFileManager).toHaveBeenCalledTimes(1);
+    expect(manager._isFileManagerActive).toBe(false);
+  });
+
   it('uses CodeMirrorInstance when editorMode is "code" (default)', async () => {
     const manager = new EditorManager(
       'print(1)', 'python', '', '', true, 5, 'editor', 'pre', 'post',

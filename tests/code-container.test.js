@@ -36,6 +36,16 @@ describe('CodeContainer theme toggle', () => {
     expect(createContainer({ showSaveLoadButtons: false }).hasStorageButtons()).toBe(false);
   });
 
+  it('registers a dedicated files page when learners may add files', () => {
+    const container = createContainer({ allowAddingFiles: true });
+    const registrations = container.getUIRegistrations();
+
+    expect(container.hasFileManagerPage()).toBe(true);
+    expect(registrations.pages).toEqual([
+      expect.objectContaining({ name: 'files' }),
+    ]);
+  });
+
   it('switches container, editor and toolbar theme state', () => {
     const container = createContainer();
     const setButtonIcon = vi.fn();
@@ -258,5 +268,18 @@ describe('CodeContainer theme toggle', () => {
     expect(dom.querySelectorAll('.instructions-panel')).toHaveLength(1);
 
     vi.useRealTimers();
+  });
+
+  it('shows the dedicated files page through the page manager', () => {
+    const container = createContainer({ allowAddingFiles: true });
+    const showPage = vi.fn();
+
+    container._pageManager = {
+      showPage,
+    };
+
+    container.showFileManagerPage();
+
+    expect(showPage).toHaveBeenCalledWith('files');
   });
 });

@@ -79,6 +79,12 @@ export default class EditorManager {
       sourceFiles: Array.isArray(workspaceOptions?.sourceFiles)
         ? workspaceOptions.sourceFiles
         : [],
+      onOpenFileManager: typeof workspaceOptions?.onOpenFileManager === 'function'
+        ? workspaceOptions.onOpenFileManager
+        : () => { },
+      onCloseFileManager: typeof workspaceOptions?.onCloseFileManager === 'function'
+        ? workspaceOptions.onCloseFileManager
+        : () => { },
     };
     this._fileManagerElement = null;
     this._isFileManagerActive = false;
@@ -142,17 +148,25 @@ export default class EditorManager {
     this._editorElement = editor;
     wrapper.appendChild(editor);
 
-    // File manager panel (hidden by default)
-    const fileManager = document.createElement('div');
-    fileManager.className = 'editor-file-manager';
-    fileManager.hidden = true;
-    this._fileManagerElement = fileManager;
-    wrapper.appendChild(fileManager);
-
     fragment.appendChild(wrapper);
 
     this._domFragment = fragment; // Cache setzen
     return fragment;
+  }
+
+  getFileManagerDOM() {
+    if (this.workspaceOptions.allowAddingFiles !== true) {
+      return null;
+    }
+
+    if (!this._fileManagerElement) {
+      const fileManager = document.createElement('div');
+      fileManager.className = 'editor-file-manager';
+      this._fileManagerElement = fileManager;
+    }
+
+    this.renderFileManager();
+    return this._fileManagerElement;
   }
 
   /**
@@ -246,6 +260,7 @@ export default class EditorManager {
   setWorkspaceSnapshot(workspace = {}) {
     this._workspace = this.createWorkspaceFromSnapshot(workspace, this._defaultWorkspace);
     this.renderFileTabs();
+    this.renderFileManager();
 
     if (this._editorElement) {
       this.mountEditorForActiveFile();
@@ -499,24 +514,17 @@ export default class EditorManager {
   }
 
   openFileManager() {
+    this.persistActiveFileCode();
     this._isFileManagerActive = true;
-    if (this._editorElement) {
-      this._editorElement.hidden = true;
-    }
-    if (this._fileManagerElement) {
-      this._fileManagerElement.hidden = false;
-      this.renderFileManager();
-    }
+    this.renderFileManager();
+    this.workspaceOptions.onOpenFileManager();
     this.renderFileTabs();
   }
 
-  closeFileManager() {
+  closeFileManager({ skipPageChange = false } = {}) {
     this._isFileManagerActive = false;
-    if (this._editorElement) {
-      this._editorElement.hidden = false;
-    }
-    if (this._fileManagerElement) {
-      this._fileManagerElement.hidden = true;
+    if (!skipPageChange) {
+      this.workspaceOptions.onCloseFileManager();
     }
     this.renderFileTabs();
   }
@@ -711,6 +719,7 @@ export default class EditorManager {
     }
     this._workspace.files.push({ name, code, visible, editable, isEntry: false });
     this.renderFileTabs();
+    this.renderFileManager();
     this.onChangeCallback(this.getCode());
   }
 
@@ -725,6 +734,7 @@ export default class EditorManager {
       this._workspace.activeFileName = newName;
     }
     this.renderFileTabs();
+    this.renderFileManager();
     this.onChangeCallback(this.getCode());
   }
 
@@ -738,6 +748,7 @@ export default class EditorManager {
       this._workspace.activeFileName = this._workspace.entryFileName;
     }
     this.renderFileTabs();
+    this.renderFileManager();
     this.onChangeCallback(this.getCode());
   }
 

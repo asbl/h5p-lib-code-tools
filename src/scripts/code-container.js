@@ -154,6 +154,8 @@ export default class CodeContainer {
           allowAddingFiles: options?.allowAddingFiles === true,
           sourceFiles: Array.isArray(options?.sourceFiles) ? options.sourceFiles : [],
           editorMode: options?.editorMode || 'code',
+          onOpenFileManager: () => this.showFileManagerPage(),
+          onCloseFileManager: () => this.showCodePage?.() || this.getPageManager().showPage('code'),
         },
       );
     }
@@ -238,7 +240,15 @@ export default class CodeContainer {
           weight: 10,
         },
       ],
-      pages: [],
+      pages: [
+        {
+          when: 'hasFileManagerPage',
+          name: 'files',
+          content: () => this.getEditorManager().getFileManagerDOM(),
+          additionalClass: 'files',
+          visible: false,
+        },
+      ],
       observers: [
         {
           when: 'hasButtons',
@@ -257,6 +267,18 @@ export default class CodeContainer {
 
   hasStorageButtons() {
     return this.options?.showSaveLoadButtons !== false;
+  }
+
+  hasFileManagerPage() {
+    return this.options?.allowAddingFiles === true;
+  }
+
+  showFileManagerPage() {
+    if (!this.hasFileManagerPage()) {
+      return;
+    }
+
+    this.getPageManager().showPage('files');
   }
 
   getTheme() {
