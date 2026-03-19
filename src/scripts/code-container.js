@@ -154,6 +154,7 @@ export default class CodeContainer {
           allowAddingFiles: options?.allowAddingFiles === true,
           sourceFiles: Array.isArray(options?.sourceFiles) ? options.sourceFiles : [],
           editorMode: options?.editorMode || 'code',
+          blocklyCategories: options?.blocklyCategories ?? null,
           onOpenFileManager: () => this.showFileManagerPage(),
           onCloseFileManager: () => this.showCodePage?.() || this.getPageManager().showPage('code'),
         },

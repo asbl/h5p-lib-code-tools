@@ -95,6 +95,9 @@ export default class EditorManager {
     this.editorMode = EDITOR_MODES.includes(workspaceOptions?.editorMode)
       ? workspaceOptions.editorMode
       : 'code';
+
+    // Per-language category selection for Blockly (null = full toolbox).
+    this.blocklyCategories = workspaceOptions?.blocklyCategories ?? null;
   }
 
   /**
@@ -800,6 +803,7 @@ export default class EditorManager {
         {
           ...sharedOptions,
           editorMode: this.editorMode,
+          blocklyCategories: this.blocklyCategories,
         }
       );
     } else {

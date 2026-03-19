@@ -178,9 +178,49 @@ function sqlGeneratorFn(/* workspace */) {
   return '';
 }
 
+/**
+ * Maps semantics boolean field names to toolbox category display names for Python.
+ * A field value of `false` means the category is excluded from the toolbox.
+ */
+export const PYTHON_CATEGORY_FIELDS = {
+  variables: 'Variablen',
+  logic: 'Logik',
+  loops: 'Schleifen',
+  math: 'Mathematik',
+  text: 'Text',
+  lists: 'Listen',
+  functions: 'Funktionen',
+};
+
+/**
+ * Builds a (potentially filtered) toolbox based on a category selection map.
+ * If `categorySelection` is null/undefined, the full unmodified toolbox is returned.
+ * A category is included as long as its boolean field is not explicitly `false`.
+ *
+ * @param {object} toolbox - Full toolbox definition.
+ * @param {Record<string, boolean>|null|undefined} categorySelection - Boolean map keyed by field name.
+ * @param {Record<string, string>} categoryFieldMap - Maps field names to toolbox category display names.
+ * @returns {object} Full or filtered toolbox.
+ */
+export function buildFilteredToolbox(toolbox, categorySelection, categoryFieldMap) {
+  if (!categorySelection || typeof categorySelection !== 'object') return toolbox;
+
+  const enabledNames = new Set(
+    Object.entries(categoryFieldMap)
+      .filter(([fieldKey]) => categorySelection[fieldKey] !== false)
+      .map(([, name]) => name)
+  );
+
+  const filteredContents = toolbox.contents.filter((cat) => enabledNames.has(cat.name));
+  // Return the original toolbox object when nothing was filtered out.
+  if (filteredContents.length === toolbox.contents.length) return toolbox;
+  return { ...toolbox, contents: filteredContents };
+}
+
 export const LANGUAGE_PACKS = {
   python: {
     toolbox: PYTHON_TOOLBOX,
+    categoryFieldMap: PYTHON_CATEGORY_FIELDS,
     /** @param {Blockly.WorkspaceSvg} workspace */
     generate(workspace) {
       return pythonGenerator.workspaceToCode(workspace) || '';
@@ -190,6 +230,7 @@ export const LANGUAGE_PACKS = {
   pseudocode: {
     // Pseudocode reuses the Python block set and generator.
     toolbox: PYTHON_TOOLBOX,
+    categoryFieldMap: PYTHON_CATEGORY_FIELDS,
     generate(workspace) {
       return pythonGenerator.workspaceToCode(workspace) || '';
     },
@@ -197,6 +238,7 @@ export const LANGUAGE_PACKS = {
   },
   sql: {
     toolbox: SQL_TOOLBOX,
+    categoryFieldMap: {},
     generate: sqlGeneratorFn,
     supported: false, // SQL blocks not yet implemented
   },
