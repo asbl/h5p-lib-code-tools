@@ -889,10 +889,12 @@
 }
 
 .blockly-workspace--blocks-only {
+  flex: none; /* explicit height must not be overridden by flex: 1 in column container */
   height: 400px;
 }
 
 .blockly-workspace--both {
+  flex: none; /* explicit height must not be overridden by flex: 1 in column container */
   height: 360px;
 }
 
