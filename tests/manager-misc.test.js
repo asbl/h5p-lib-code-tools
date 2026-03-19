@@ -195,6 +195,35 @@ describe('EditorManager', () => {
     expect(tabTexts).toEqual(['main.py', '+']);
   });
 
+  it('hides file tabs when only one file is visible and adding files is disabled', async () => {
+    const manager = new EditorManager(
+      'print(1)',
+      'python',
+      '',
+      '',
+      true,
+      5,
+      'editor-single-file',
+      'pre-single-file',
+      'post-single-file',
+      vi.fn(),
+      vi.fn(),
+      'light',
+      {
+        enabled: true,
+        entryFileName: 'main.py',
+        allowAddingFiles: false,
+      },
+    );
+
+    const dom = manager.getDOM();
+    document.body.appendChild(dom);
+    await manager.setupEditors();
+
+    expect(manager.getVisibleFiles().map((file) => file.name)).toEqual(['main.py']);
+    expect(manager._tabsElement.hidden).toBe(true);
+  });
+
   it('shows file tabs without "+" button when multiple files are visible', async () => {
     const manager = new EditorManager(
       'print(1)',

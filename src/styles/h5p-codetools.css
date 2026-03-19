@@ -168,6 +168,10 @@
   overflow-y: hidden;
 }
 
+.code_container .editor-file-tabs[hidden] {
+  display: none;
+}
+
 .code_container .editor-file-tab {
   appearance: none;
   border: 1px solid transparent;
