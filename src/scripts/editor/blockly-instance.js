@@ -221,13 +221,6 @@ export default class BlocklyEditorInstance {
       this._refreshCodePreview(code);
       this.options.onChangeCallback(code);
     });
-
-    // The div is freshly inserted into the DOM and has not yet been laid out.
-    // Schedule a resize after the browser's first layout pass so Blockly gets
-    // the correct canvas dimensions without requiring a manual window resize.
-    requestAnimationFrame(() => {
-      if (this._workspace) Blockly.svgResize(this._workspace);
-    });
   }
 
   _refreshCodePreview(code) {
@@ -239,7 +232,14 @@ export default class BlocklyEditorInstance {
   _attachResizeObserver() {
     if (!this.parentElement || !window.ResizeObserver) return;
     let lastCall = 0;
-    this._resizeObserver = new ResizeObserver(() => {
+    this._resizeObserver = new ResizeObserver((entries) => {
+      // Ignore observations while the element is inside a display:none ancestor
+      // (size is 0×0). The throttle clock must not start until the element has
+      // real dimensions, so that the first visible-state observation is never
+      // suppressed by the 400 ms guard.
+      const rect = entries[0]?.contentRect;
+      if (!rect || (rect.width === 0 && rect.height === 0)) return;
+
       const now = performance.now();
       if (now - lastCall < 400) return;
       lastCall = now;

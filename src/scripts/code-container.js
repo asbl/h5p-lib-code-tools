@@ -438,6 +438,10 @@ export default class CodeContainer {
     await this.instructionsManager.setupInstructions();
     this.applyTheme();
     this.getPageManager().showPage('code');
+    // Blockly injects its SVG while the editor page is still display:none.
+    // After showPage() makes the page visible, schedule a resize so the
+    // workspace fills the container correctly without needing a manual resize.
+    requestAnimationFrame(() => this._editorManager?.restoreDynamicHeight());
   }
 
   /**
