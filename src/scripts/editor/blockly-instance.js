@@ -221,6 +221,13 @@ export default class BlocklyEditorInstance {
       this._refreshCodePreview(code);
       this.options.onChangeCallback(code);
     });
+
+    // The div is freshly inserted into the DOM and has not yet been laid out.
+    // Schedule a resize after the browser's first layout pass so Blockly gets
+    // the correct canvas dimensions without requiring a manual window resize.
+    requestAnimationFrame(() => {
+      if (this._workspace) Blockly.svgResize(this._workspace);
+    });
   }
 
   _refreshCodePreview(code) {
