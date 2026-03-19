@@ -91,7 +91,16 @@ const PYTHON_TOOLBOX = {
         { kind: 'block', type: 'math_single' },
         { kind: 'block', type: 'math_random_int' },
         { kind: 'block', type: 'math_random_float' },
-        { kind: 'block', type: 'math_is_even' },
+        {
+          kind: 'block',
+          type: 'math_number_property',
+          fields: { PROPERTY: 'EVEN' },
+          inputs: {
+            NUMBER_TO_CHECK: {
+              shadow: { type: 'math_number', fields: { NUM: 0 } },
+            },
+          },
+        },
       ],
     },
     {

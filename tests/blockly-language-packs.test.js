@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import * as Blockly from 'blockly';
 import {
   PYTHON_CATEGORY_FIELDS,
   buildFilteredToolbox,
@@ -51,5 +52,32 @@ describe('buildFilteredToolbox', () => {
     const originalLength = toolbox.contents.length;
     buildFilteredToolbox(toolbox, { loops: false }, map);
     expect(toolbox.contents.length).toBe(originalLength);
+  });
+
+  it('contains only registered Blockly block types and shadow types', () => {
+    const invalidTypes = new Set();
+
+    const registerIfMissing = (type) => {
+      if (typeof type !== 'string') return;
+      if (!Blockly.Blocks[type]) invalidTypes.add(type);
+    };
+
+    const visitItems = (items = []) => {
+      items.forEach((item) => {
+        if (item.kind === 'block') {
+          registerIfMissing(item.type);
+          Object.values(item.inputs || {}).forEach((inputSpec) => {
+            registerIfMissing(inputSpec?.shadow?.type);
+          });
+        }
+
+        if (Array.isArray(item.contents)) {
+          visitItems(item.contents);
+        }
+      });
+    };
+
+    visitItems(toolbox.contents);
+    expect([...invalidTypes]).toEqual([]);
   });
 });
