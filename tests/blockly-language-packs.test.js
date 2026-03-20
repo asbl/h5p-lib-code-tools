@@ -5,7 +5,7 @@ import {
   buildFilteredToolbox,
   buildPackageToolbox,
   LANGUAGE_PACKS,
-} from '../src/scripts/editor/blockly-language-packs.js';
+} from '../src/scripts/editor/blockly/blockly-language-packs.js';
 
 describe('buildFilteredToolbox', () => {
   const toolbox = LANGUAGE_PACKS.python.toolbox;

@@ -48,15 +48,15 @@ const { BlocklyEditorInstanceMock, blocklyInstances } = vi.hoisted(() => {
   return { BlocklyEditorInstanceMock, blocklyInstances };
 });
 
-vi.mock('../src/scripts/editor/codemirror-instance', () => ({
+vi.mock('../src/scripts/editor/codemirror/codemirror-instance.js', () => ({
   default: CodeMirrorInstanceMock,
 }));
 
-vi.mock('@scripts/editor/codemirror-instance.js', () => ({
+vi.mock('@scripts/editor/codemirror/codemirror-instance.js', () => ({
   default: CodeMirrorInstanceMock,
 }));
 
-vi.mock('../src/scripts/editor/blockly-instance.js', () => ({
+vi.mock('../src/scripts/editor/blockly/blockly-editor-instance.js', () => ({
   default: BlocklyEditorInstanceMock,
 }));
 

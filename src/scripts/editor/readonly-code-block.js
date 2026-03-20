@@ -4,7 +4,7 @@ import { javascript } from '@codemirror/lang-javascript';
 import { markdown } from '@codemirror/lang-markdown';
 import { python } from '@codemirror/lang-python';
 import { sql } from '@codemirror/lang-sql';
-import { getCodeMirrorThemeExtensions } from './codemirror-themes.js';
+import { getCodeMirrorThemeExtensions } from './codemirror/codemirror-themes.js';
 
 /**
  * Gets a CodeMirror language extension for markdown code blocks.

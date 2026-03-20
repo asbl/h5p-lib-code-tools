@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getCodeMirrorThemeExtensions } from '../src/scripts/editor/codemirror-themes.js';
+import { getCodeMirrorThemeExtensions } from '../src/scripts/editor/codemirror/codemirror-themes.js';
 
 describe('CodeMirror themes', () => {
   it('returns a non-empty array of extensions for the light theme', () => {

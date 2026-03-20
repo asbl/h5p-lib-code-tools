@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import CodeMirrorInstance from '../src/scripts/editor/codemirror-instance.js';
+import CodeMirrorInstance from '../src/scripts/editor/codemirror/codemirror-instance.js';
 
 describe('CodeMirrorInstance', () => {
   it('returns language extensions for supported languages', () => {

@@ -1,4 +1,4 @@
-import CodeMirrorInstance from '@scripts/editor/codemirror-instance.js';
+import CodeMirrorInstance from '@scripts/editor/codemirror/codemirror-instance.js';
 
 /**
  * Manages the console output component.

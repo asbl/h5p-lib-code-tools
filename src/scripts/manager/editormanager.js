@@ -1,5 +1,5 @@
-import CodeMirrorInstance from '../editor/codemirror-instance';
-import BlocklyEditorInstance from '../editor/blockly-instance.js';
+import CodeMirrorInstance from '../editor/codemirror/codemirror-instance.js';
+import BlocklyEditorInstance from '../editor/blockly/blockly-editor-instance.js';
 
 /**
  * Supported editor mode identifiers.
