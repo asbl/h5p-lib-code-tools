@@ -3,6 +3,7 @@ import * as Blockly from 'blockly';
 import {
   PYTHON_CATEGORY_FIELDS,
   buildFilteredToolbox,
+  buildPackageToolbox,
   LANGUAGE_PACKS,
 } from '../src/scripts/editor/blockly-language-packs.js';
 
@@ -54,6 +55,27 @@ describe('buildFilteredToolbox', () => {
     expect(toolbox.contents.length).toBe(originalLength);
   });
 
+  it('keeps categories that are not mapped in categoryFieldMap', () => {
+    const extendedToolbox = {
+      ...toolbox,
+      contents: [...toolbox.contents, { kind: 'category', name: 'NumPy', contents: [] }],
+    };
+
+    const selection = {
+      variables: true,
+      logic: false,
+      loops: false,
+      math: false,
+      text: true,
+      lists: false,
+      functions: false,
+    };
+
+    const filtered = buildFilteredToolbox(extendedToolbox, selection, map);
+    const names = filtered.contents.map((c) => c.name);
+    expect(names).toEqual(['Variablen', 'Text', 'NumPy']);
+  });
+
   it('contains only registered Blockly block types and shadow types', () => {
     const invalidTypes = new Set();
 
@@ -79,5 +101,37 @@ describe('buildFilteredToolbox', () => {
 
     visitItems(toolbox.contents);
     expect([...invalidTypes]).toEqual([]);
+  });
+});
+
+describe('buildPackageToolbox', () => {
+  const toolbox = LANGUAGE_PACKS.python.toolbox;
+
+  it('returns the original toolbox when no supported package is selected', () => {
+    expect(buildPackageToolbox(toolbox, 'python', ['scipy'])).toBe(toolbox);
+  });
+
+  it('adds a NumPy category when numpy is selected', () => {
+    const packageToolbox = buildPackageToolbox(toolbox, 'python', ['NumPy', 'numpy']);
+
+    expect(packageToolbox).not.toBe(toolbox);
+
+    const numpyCategories = packageToolbox.contents.filter((category) => category.name === 'NumPy');
+    expect(numpyCategories).toHaveLength(1);
+    expect(numpyCategories[0].contents.map((item) => item.type)).toEqual([
+      'numpy_import_as',
+      'numpy_array_create',
+      'numpy_linspace',
+      'numpy_mean',
+    ]);
+  });
+
+  it('registers Blockly block types required by the NumPy category', () => {
+    buildPackageToolbox(toolbox, 'python', ['numpy']);
+
+    expect(Blockly.Blocks.numpy_import_as).toBeDefined();
+    expect(Blockly.Blocks.numpy_array_create).toBeDefined();
+    expect(Blockly.Blocks.numpy_linspace).toBeDefined();
+    expect(Blockly.Blocks.numpy_mean).toBeDefined();
   });
 });

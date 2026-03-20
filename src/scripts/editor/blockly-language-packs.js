@@ -2,6 +2,216 @@ import * as Blockly from 'blockly';
 import { pythonGenerator } from 'blockly/python';
 import 'blockly/blocks';
 
+const NUMPY_CATEGORY_NAME = 'NumPy';
+const NUMPY_CATEGORY_COLOUR = '#4B8BBE';
+const PYTHON_FUNCTION_ORDER =
+  pythonGenerator.ORDER_FUNCTION_CALL ?? pythonGenerator.ORDER_NONE;
+
+/**
+ * Normalizes a value so it can be used as a Python identifier.
+ * @param {string} value - Raw identifier candidate.
+ * @param {string} fallback - Used when the candidate becomes empty.
+ * @returns {string} Safe identifier.
+ */
+function sanitizePythonIdentifier(value, fallback) {
+  const normalized = String(value || '')
+    .trim()
+    .replace(/[^A-Za-z0-9_]/g, '_')
+    .replace(/^[^A-Za-z_]+/, '')
+    .replace(/^_+/, '');
+
+  return normalized || fallback;
+}
+
+/** Registers custom NumPy Blockly blocks and generators once. */
+function registerNumpyBlocks() {
+  if (!Blockly.Blocks.numpy_import_as) {
+    Blockly.Blocks.numpy_import_as = {
+      init() {
+        this.appendDummyInput()
+          .appendField('import numpy as')
+          .appendField(new Blockly.FieldTextInput('np'), 'ALIAS');
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(NUMPY_CATEGORY_COLOUR);
+        this.setTooltip('Importiert NumPy mit Alias, z. B. np.');
+      },
+    };
+  }
+
+  if (!Blockly.Blocks.numpy_array_create) {
+    Blockly.Blocks.numpy_array_create = {
+      init() {
+        this.appendValueInput('VALUES')
+          .appendField('np.array');
+        this.setOutput(true, null);
+        this.setColour(NUMPY_CATEGORY_COLOUR);
+        this.setTooltip('Erstellt ein NumPy-Array aus einer Liste.');
+      },
+    };
+  }
+
+  if (!Blockly.Blocks.numpy_linspace) {
+    Blockly.Blocks.numpy_linspace = {
+      init() {
+        this.appendValueInput('START')
+          .setCheck('Number')
+          .appendField('np.linspace start');
+        this.appendValueInput('STOP')
+          .setCheck('Number')
+          .appendField('stop');
+        this.appendValueInput('COUNT')
+          .setCheck('Number')
+          .appendField('anzahl');
+        this.setInputsInline(true);
+        this.setOutput(true, null);
+        this.setColour(NUMPY_CATEGORY_COLOUR);
+        this.setTooltip('Erstellt eine gleichmaessig verteilte Zahlenfolge.');
+      },
+    };
+  }
+
+  if (!Blockly.Blocks.numpy_mean) {
+    Blockly.Blocks.numpy_mean = {
+      init() {
+        this.appendValueInput('VALUES')
+          .appendField('np.mean');
+        this.setOutput(true, 'Number');
+        this.setColour(NUMPY_CATEGORY_COLOUR);
+        this.setTooltip('Berechnet den Mittelwert eines NumPy-Arrays.');
+      },
+    };
+  }
+
+  if (!pythonGenerator.forBlock.numpy_import_as) {
+    pythonGenerator.forBlock.numpy_import_as = (block) => {
+      const alias = sanitizePythonIdentifier(block.getFieldValue('ALIAS'), 'np');
+      return `import numpy as ${alias}\n`;
+    };
+  }
+
+  if (!pythonGenerator.forBlock.numpy_array_create) {
+    pythonGenerator.forBlock.numpy_array_create = (block, generator) => {
+      const values = generator.valueToCode(block, 'VALUES', pythonGenerator.ORDER_NONE) || '[]';
+      return [`np.array(${values})`, PYTHON_FUNCTION_ORDER];
+    };
+  }
+
+  if (!pythonGenerator.forBlock.numpy_linspace) {
+    pythonGenerator.forBlock.numpy_linspace = (block, generator) => {
+      const start = generator.valueToCode(block, 'START', pythonGenerator.ORDER_NONE) || '0';
+      const stop = generator.valueToCode(block, 'STOP', pythonGenerator.ORDER_NONE) || '1';
+      const count = generator.valueToCode(block, 'COUNT', pythonGenerator.ORDER_NONE) || '50';
+      return [`np.linspace(${start}, ${stop}, ${count})`, PYTHON_FUNCTION_ORDER];
+    };
+  }
+
+  if (!pythonGenerator.forBlock.numpy_mean) {
+    pythonGenerator.forBlock.numpy_mean = (block, generator) => {
+      const values = generator.valueToCode(block, 'VALUES', pythonGenerator.ORDER_NONE) || '[]';
+      return [`np.mean(${values})`, PYTHON_FUNCTION_ORDER];
+    };
+  }
+}
+
+const PYTHON_PACKAGE_TOOLBOX_BUILDERS = {
+  numpy: () => {
+    registerNumpyBlocks();
+    return {
+      kind: 'category',
+      name: NUMPY_CATEGORY_NAME,
+      colour: NUMPY_CATEGORY_COLOUR,
+      contents: [
+        { kind: 'block', type: 'numpy_import_as' },
+        {
+          kind: 'block',
+          type: 'numpy_array_create',
+          inputs: {
+            VALUES: {
+              shadow: {
+                type: 'lists_create_empty',
+              },
+            },
+          },
+        },
+        {
+          kind: 'block',
+          type: 'numpy_linspace',
+          inputs: {
+            START: {
+              shadow: {
+                type: 'math_number',
+                fields: { NUM: 0 },
+              },
+            },
+            STOP: {
+              shadow: {
+                type: 'math_number',
+                fields: { NUM: 10 },
+              },
+            },
+            COUNT: {
+              shadow: {
+                type: 'math_number',
+                fields: { NUM: 50 },
+              },
+            },
+          },
+        },
+        {
+          kind: 'block',
+          type: 'numpy_mean',
+          inputs: {
+            VALUES: {
+              shadow: {
+                type: 'lists_create_empty',
+              },
+            },
+          },
+        },
+      ],
+    };
+  },
+};
+
+/**
+ * Adds package-specific toolbox categories for supported languages.
+ * @param {object} toolbox - Base toolbox.
+ * @param {string} codingLanguage - Active language key.
+ * @param {string[]} packageNames - Selected package names.
+ * @returns {object} Base toolbox or extended toolbox.
+ */
+export function buildPackageToolbox(toolbox, codingLanguage, packageNames = []) {
+  const normalizedLanguage = String(codingLanguage || '').toLowerCase();
+  if (normalizedLanguage !== 'python' && normalizedLanguage !== 'pseudocode') {
+    return toolbox;
+  }
+
+  const selectedPackages = [
+    ...new Set(
+      (Array.isArray(packageNames) ? packageNames : [])
+        .map((name) => String(name || '').trim().toLowerCase())
+        .filter(Boolean)
+    ),
+  ];
+
+  const additions = selectedPackages
+    .map((packageName) => PYTHON_PACKAGE_TOOLBOX_BUILDERS[packageName]?.())
+    .filter(Boolean);
+
+  if (additions.length === 0) {
+    return toolbox;
+  }
+
+  return {
+    ...toolbox,
+    contents: [
+      ...toolbox.contents,
+      ...additions,
+    ],
+  };
+}
+
 /**
  * Standard Python toolbox – covers enough blocks for introductory tasks.
  * Categories are ordered from most-commonly used to least.
@@ -204,7 +414,9 @@ export const PYTHON_CATEGORY_FIELDS = {
 /**
  * Builds a (potentially filtered) toolbox based on a category selection map.
  * If `categorySelection` is null/undefined, the full unmodified toolbox is returned.
- * A category is included as long as its boolean field is not explicitly `false`.
+ * For categories referenced by `categoryFieldMap`, a category is included as long as
+ * its boolean field is not explicitly `false`. Categories outside of that map are
+ * left untouched.
  *
  * @param {object} toolbox - Full toolbox definition.
  * @param {Record<string, boolean>|null|undefined} categorySelection - Boolean map keyed by field name.
@@ -214,13 +426,17 @@ export const PYTHON_CATEGORY_FIELDS = {
 export function buildFilteredToolbox(toolbox, categorySelection, categoryFieldMap) {
   if (!categorySelection || typeof categorySelection !== 'object') return toolbox;
 
+  const mappedNames = new Set(Object.values(categoryFieldMap || {}));
   const enabledNames = new Set(
-    Object.entries(categoryFieldMap)
+    Object.entries(categoryFieldMap || {})
       .filter(([fieldKey]) => categorySelection[fieldKey] !== false)
       .map(([, name]) => name)
   );
 
-  const filteredContents = toolbox.contents.filter((cat) => enabledNames.has(cat.name));
+  const filteredContents = toolbox.contents.filter((cat) => {
+    if (!mappedNames.has(cat.name)) return true;
+    return enabledNames.has(cat.name);
+  });
   // Return the original toolbox object when nothing was filtered out.
   if (filteredContents.length === toolbox.contents.length) return toolbox;
   return { ...toolbox, contents: filteredContents };

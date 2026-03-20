@@ -395,6 +395,33 @@ describe('EditorManager', () => {
     expect(BlocklyEditorInstanceMock).toHaveBeenCalledTimes(1);
     expect(BlocklyEditorInstanceMock.mock.calls[0][3].blocklyCategories).toBeNull();
   });
+
+  it('passes blocklyPackages through to BlocklyEditorInstance', async () => {
+    const blocklyPackages = ['numpy', 'pandas'];
+    const manager = new EditorManager(
+      'print(1)', 'python', '', '', true, 5, 'editor', 'pre', 'post',
+      vi.fn(), vi.fn(), 'light',
+      { editorMode: 'blocks', blocklyPackages },
+    );
+    manager.getDOM();
+    await manager.setupEditors();
+
+    expect(BlocklyEditorInstanceMock).toHaveBeenCalledTimes(1);
+    expect(BlocklyEditorInstanceMock.mock.calls[0][3].blocklyPackages).toEqual(blocklyPackages);
+  });
+
+  it('passes empty blocklyPackages when not specified', async () => {
+    const manager = new EditorManager(
+      'print(1)', 'python', '', '', true, 5, 'editor', 'pre', 'post',
+      vi.fn(), vi.fn(), 'light',
+      { editorMode: 'blocks' },
+    );
+    manager.getDOM();
+    await manager.setupEditors();
+
+    expect(BlocklyEditorInstanceMock).toHaveBeenCalledTimes(1);
+    expect(BlocklyEditorInstanceMock.mock.calls[0][3].blocklyPackages).toEqual([]);
+  });
 });
 
 describe('ConsoleManager', () => {

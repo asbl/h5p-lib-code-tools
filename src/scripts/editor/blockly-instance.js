@@ -1,5 +1,9 @@
 import * as Blockly from 'blockly';
-import { getLanguagePack, buildFilteredToolbox } from './blockly-language-packs.js';
+import {
+  getLanguagePack,
+  buildFilteredToolbox,
+  buildPackageToolbox,
+} from './blockly-language-packs.js';
 
 /**
  * Blockly-based editor instance implementing the EditorAdapter interface
@@ -32,8 +36,12 @@ export default class BlocklyEditorInstance {
       postCode: '',
       editorMode: 'blocks',
       blocklyCategories: null,
+      blocklyPackages: [],
       ...options,
     };
+    this.options.blocklyPackages = Array.isArray(this.options.blocklyPackages)
+      ? this.options.blocklyPackages
+      : [];
 
     this._workspace = null;
     this._resizeObserver = null;
@@ -189,8 +197,14 @@ export default class BlocklyEditorInstance {
       ? this._makeDarkTheme()
       : Blockly.Themes.Zelos;
 
-    const toolbox = buildFilteredToolbox(
+    const packageToolbox = buildPackageToolbox(
       this._languagePack.toolbox,
+      this.codingLanguage,
+      this.options.blocklyPackages,
+    );
+
+    const toolbox = buildFilteredToolbox(
+      packageToolbox,
       this.options.blocklyCategories,
       this._languagePack.categoryFieldMap ?? {},
     );

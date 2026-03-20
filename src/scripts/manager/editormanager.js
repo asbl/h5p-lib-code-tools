@@ -98,6 +98,11 @@ export default class EditorManager {
 
     // Per-language category selection for Blockly (null = full toolbox).
     this.blocklyCategories = workspaceOptions?.blocklyCategories ?? null;
+
+    // Selected runtime packages for package-specific Blockly categories.
+    this.blocklyPackages = Array.isArray(workspaceOptions?.blocklyPackages)
+      ? workspaceOptions.blocklyPackages
+      : [];
   }
 
   /**
@@ -804,6 +809,7 @@ export default class EditorManager {
           ...sharedOptions,
           editorMode: this.editorMode,
           blocklyCategories: this.blocklyCategories,
+          blocklyPackages: this.blocklyPackages,
         }
       );
     } else {

@@ -155,6 +155,7 @@ export default class CodeContainer {
           sourceFiles: Array.isArray(options?.sourceFiles) ? options.sourceFiles : [],
           editorMode: options?.editorMode || 'code',
           blocklyCategories: options?.blocklyCategories ?? null,
+          blocklyPackages: Array.isArray(options?.blocklyPackages) ? options.blocklyPackages : [],
           onOpenFileManager: () => this.showFileManagerPage(),
           onCloseFileManager: () => this.showCodePage?.() || this.getPageManager().showPage('code'),
         },
