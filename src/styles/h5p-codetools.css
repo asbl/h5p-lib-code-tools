@@ -446,8 +446,26 @@
   background-color: white;
 }
 
+
+.code_container .console_wrapper {
+  margin-top: 8px;
+  border: 1px solid var(--code-surface-border);
+  border-radius: 4px;
+  background-color: var(--code-tab-bg);
+  overflow: hidden;
+}
+
 .code_container .console-header {
-  display: none;
+  display: flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--code-toolbar-text);
+  background-color: color-mix(in srgb, var(--code-tab-bg) 88%, #94a3b8 12%);
 }
 
 .code_container .console-body {
@@ -458,11 +476,13 @@
   font-size: 13px;
   line-height: 1.45;
   width: 100%;
+  min-height: 64px;
   max-height: 140px;
   overflow-y: auto;
   margin-top: 0;
-  padding: 10px 0 0;
+  padding: 8px 0 0;
   border: 0;
+  border-top: 1px solid var(--code-surface-border);
 }
 
 .code_container .console-body:focus-visible {

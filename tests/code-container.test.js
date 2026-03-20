@@ -36,6 +36,14 @@ describe('CodeContainer theme toggle', () => {
     expect(createContainer({ showSaveLoadButtons: false }).hasStorageButtons()).toBe(false);
   });
 
+  it('respects explicit hasConsole=false when creating the console manager', () => {
+    const container = createContainer({ hasConsole: false });
+    const manager = container.getConsoleManager(container.parent, { hasConsole: false });
+
+    expect(manager.hasConsole).toBe(false);
+    expect(manager.getDOM()).toBeNull();
+  });
+
   it('registers a dedicated files page when learners may add files', () => {
     const container = createContainer({ allowAddingFiles: true });
     const registrations = container.getUIRegistrations();

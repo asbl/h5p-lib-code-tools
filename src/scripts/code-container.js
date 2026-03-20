@@ -166,7 +166,7 @@ export default class CodeContainer {
   getConsoleManager(parent, options) {
     if (!this._consoleManager) {
       this._consoleManager = new ConsoleManager(
-        options?.hasConsole || true,
+        options?.hasConsole ?? true,
         this.consoleUID,
         this.l10n,
         options?.consoleType || 'textarea',

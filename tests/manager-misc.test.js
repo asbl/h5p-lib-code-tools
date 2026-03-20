@@ -403,6 +403,16 @@ describe('ConsoleManager', () => {
     codeMirrorInstances.length = 0;
   });
 
+  it('returns null DOM and does not throw when console is disabled', async () => {
+    const manager = new ConsoleManager(false, 'console-disabled', { console: 'Console' });
+
+    expect(manager.getDOM()).toBeNull();
+    await manager.setupConsole();
+
+    expect(() => manager.showConsole()).not.toThrow();
+    expect(CodeMirrorInstanceMock).not.toHaveBeenCalled();
+  });
+
   it('creates a console editor and forwards console operations', async () => {
     const manager = new ConsoleManager(true, 'console', { console: 'Console' });
 

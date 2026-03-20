@@ -39,7 +39,7 @@ export default class ConsoleManager {
     const fragment = document.createDocumentFragment();
 
     const wrapper = document.createElement('div');
-    wrapper.className = 'console_wrapper console-wrapper hidden';
+    wrapper.className = 'console_wrapper console-wrapper';
 
     const header = document.createElement('div');
     header.className = 'console-header';
@@ -108,8 +108,18 @@ export default class ConsoleManager {
   }
 
   showConsole() {
-    const el = document.getElementById(this.consoleUID).parentElement;
-    el.classList.remove('hidden');
+    if (!this.hasConsole) {
+      return;
+    }
+
+    const consoleElement = document.getElementById(this.consoleUID);
+    const wrapper = consoleElement?.parentElement;
+
+    if (!wrapper) {
+      return;
+    }
+
+    wrapper.classList.remove('hidden');
   }
 
   /**
