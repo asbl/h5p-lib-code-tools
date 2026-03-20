@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import * as Blockly from 'blockly';
 import {
-  PYTHON_CATEGORY_FIELDS,
   buildFilteredToolbox,
   buildPackageToolbox,
+} from '../src/scripts/editor/blockly/managers/blockly-language-manager.js';
+import {
   LANGUAGE_PACKS,
+  PYTHON_CATEGORY_FIELDS,
 } from '../src/scripts/editor/blockly/blockly-language-packs.js';
 
 describe('buildFilteredToolbox', () => {
@@ -108,7 +110,7 @@ describe('buildPackageToolbox', () => {
   const toolbox = LANGUAGE_PACKS.python.toolbox;
 
   it('returns the original toolbox when no supported package is selected', () => {
-    expect(buildPackageToolbox(toolbox, 'python', ['scipy'])).toBe(toolbox);
+    expect(buildPackageToolbox(toolbox, 'python', ['packaging'])).toBe(toolbox);
   });
 
   it('adds a NumPy category when numpy is selected', () => {
@@ -133,5 +135,40 @@ describe('buildPackageToolbox', () => {
     expect(Blockly.Blocks.numpy_array_create).toBeDefined();
     expect(Blockly.Blocks.numpy_linspace).toBeDefined();
     expect(Blockly.Blocks.numpy_mean).toBeDefined();
+  });
+
+  it('adds a Matplotlib category when matplotlib is selected', () => {
+    const packageToolbox = buildPackageToolbox(toolbox, 'python', ['matplotlib']);
+
+    const matplotlibCategories = packageToolbox.contents.filter((category) => category.name === 'Matplotlib');
+    expect(matplotlibCategories).toHaveLength(1);
+    expect(matplotlibCategories[0].contents.map((item) => item.type)).toEqual([
+      'matplotlib_import_pyplot',
+      'matplotlib_create_figure',
+      'matplotlib_plot_line',
+      'matplotlib_set_title',
+      'matplotlib_show_plot',
+    ]);
+  });
+
+  it('adds a SciPy category when scipy is selected', () => {
+    const packageToolbox = buildPackageToolbox(toolbox, 'python', ['scipy']);
+
+    const scipyCategories = packageToolbox.contents.filter((category) => category.name === 'SciPy');
+    expect(scipyCategories).toHaveLength(1);
+    expect(scipyCategories[0].contents.map((item) => item.type)).toEqual([
+      'scipy_import_linalg',
+      'scipy_linalg_solve',
+    ]);
+  });
+
+  it('registers Blockly block types required by the Matplotlib category', () => {
+    buildPackageToolbox(toolbox, 'python', ['matplotlib']);
+
+    expect(Blockly.Blocks.matplotlib_import_pyplot).toBeDefined();
+    expect(Blockly.Blocks.matplotlib_create_figure).toBeDefined();
+    expect(Blockly.Blocks.matplotlib_plot_line).toBeDefined();
+    expect(Blockly.Blocks.matplotlib_set_title).toBeDefined();
+    expect(Blockly.Blocks.matplotlib_show_plot).toBeDefined();
   });
 });

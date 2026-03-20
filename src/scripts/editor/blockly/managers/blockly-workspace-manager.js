@@ -1,16 +1,12 @@
 import * as Blockly from 'blockly';
-import {
-  buildFilteredToolbox,
-  buildPackageToolbox,
-} from '../blockly-language-packs.js';
 
 /**
  * Owns Blockly workspace lifecycle and resize behavior.
  */
 export default class BlocklyWorkspaceManager {
-  constructor(codingLanguage, languagePack, options = {}) {
+  constructor(codingLanguage, languageManager, options = {}) {
     this.codingLanguage = codingLanguage;
-    this.languagePack = languagePack;
+    this.languageManager = languageManager;
     this.options = {
       readonly: false,
       blocklyCategories: null,
@@ -43,17 +39,7 @@ export default class BlocklyWorkspaceManager {
     this.blocklyDiv = blocklyDiv;
     this.parentElement = parentElement;
 
-    const packageToolbox = buildPackageToolbox(
-      this.languagePack.toolbox,
-      this.codingLanguage,
-      this.options.blocklyPackages,
-    );
-
-    const toolbox = buildFilteredToolbox(
-      packageToolbox,
-      this.options.blocklyCategories,
-      this.languagePack.categoryFieldMap ?? {},
-    );
+    const toolbox = this.languageManager.buildToolbox(this.options.blocklyCategories);
 
     this.workspace = Blockly.inject(this.blocklyDiv, {
       toolbox,
@@ -91,11 +77,7 @@ export default class BlocklyWorkspaceManager {
    * @returns {string} Generated source code.
    */
   getCode() {
-    if (!this.workspace) {
-      return '';
-    }
-
-    return this.languagePack.generate(this.workspace) || '';
+    return this.languageManager.generateCode(this.workspace);
   }
 
   /**

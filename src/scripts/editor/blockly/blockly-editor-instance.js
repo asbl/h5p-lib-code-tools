@@ -1,5 +1,5 @@
-import { getLanguagePack } from './blockly-language-packs.js';
 import BlocklyLayoutManager from './managers/blockly-layout-manager.js';
+import BlocklyLanguageManager from './managers/blockly-language-manager.js';
 import BlocklyThemeManager from './managers/blockly-theme-manager.js';
 import BlocklyWorkspaceManager from './managers/blockly-workspace-manager.js';
 
@@ -41,12 +41,16 @@ export default class BlocklyEditorInstance {
       ? this.options.blocklyPackages
       : [];
 
-    this._languagePack = getLanguagePack(codingLanguage);
+    this._languageManager = new BlocklyLanguageManager(
+      codingLanguage,
+      this.options.blocklyPackages,
+    );
+    this._languagePack = this._languageManager.getLanguagePack();
     this._layoutManager = new BlocklyLayoutManager(this.parentElement);
     this._themeManager = new BlocklyThemeManager(this.parentElement);
     this._workspaceManager = new BlocklyWorkspaceManager(
       this.codingLanguage,
-      this._languagePack,
+      this._languageManager,
       {
         readonly: this.options.readonly,
         blocklyCategories: this.options.blocklyCategories,
