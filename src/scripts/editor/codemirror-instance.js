@@ -104,6 +104,7 @@ export default class CodeMirrorInstance {
         }),
         EditorView.editable.of(!this.options.readonly && !this.isConsole),
         this.createReadonlyDecorations(),
+        ...(this.isConsole ? [this.createConsoleErrorLineDecorations()] : []),
         ...this.readOnlyRangesExtension()
       ]
     });
@@ -358,6 +359,40 @@ export default class CodeMirrorInstance {
 
       provide: (f) => EditorView.decorations.from(f)
     });
+  }
+
+  createConsoleErrorLineDecorations() {
+    const errorLineDecoration = Decoration.line({ class: 'cm-console-error-line' });
+
+    return StateField.define({
+      create: (state) => this.buildConsoleErrorLineDecorations(state, errorLineDecoration),
+
+      update: (decorations, tr) => {
+        if (!tr.docChanged) return decorations;
+        return this.buildConsoleErrorLineDecorations(tr.state, errorLineDecoration);
+      },
+
+      provide: (f) => EditorView.decorations.from(f)
+    });
+  }
+
+  isConsoleErrorLine(text = '') {
+    const normalizedText = String(text || '').trimStart();
+    return normalizedText.startsWith('[!>] >') || normalizedText.startsWith('!>');
+  }
+
+  buildConsoleErrorLineDecorations(state, lineDecoration) {
+    const builder = new RangeSetBuilder();
+
+    for (let lineNumber = 1; lineNumber <= state.doc.lines; lineNumber += 1) {
+      const line = state.doc.line(lineNumber);
+
+      if (this.isConsoleErrorLine(line.text)) {
+        builder.add(line.from, line.from, lineDecoration);
+      }
+    }
+
+    return builder.finish();
   }
 
   buildReadonlyDecorations(state, mark) {

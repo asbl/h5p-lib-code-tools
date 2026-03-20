@@ -59,6 +59,14 @@ describe('CodeMirrorInstance', () => {
     expect(instance.editorView.requestMeasure).toHaveBeenCalledTimes(2);
   });
 
+  it('detects console error markers for red error line styling', () => {
+    const instance = Object.create(CodeMirrorInstance.prototype);
+
+    expect(instance.isConsoleErrorLine('[!>] > boom')).toBe(true);
+    expect(instance.isConsoleErrorLine('!> boom')).toBe(true);
+    expect(instance.isConsoleErrorLine('[runner] > ok')).toBe(false);
+  });
+
   it('resolves its parent element from the DOM by uid', () => {
     const element = document.createElement('div');
     element.id = 'editor-target';

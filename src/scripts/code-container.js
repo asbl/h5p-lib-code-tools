@@ -170,6 +170,7 @@ export default class CodeContainer {
         this.consoleUID,
         this.l10n,
         options?.consoleType || 'textarea',
+        options?.resizeActionHandler,
       );
       this._consoleManager.setTheme(this.getTheme());
     }

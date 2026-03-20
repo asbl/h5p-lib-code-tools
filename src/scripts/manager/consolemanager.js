@@ -10,12 +10,16 @@ export default class ConsoleManager {
    * @param {string} consoleUID
    * @param {object} l10n
    * @param {string} consoleType
+   * @param {Function} resizeActionHandler
    */
-  constructor(hasConsole, consoleUID, l10n, consoleType = 'codemirror') {
+  constructor(hasConsole, consoleUID, l10n, consoleType = 'codemirror', resizeActionHandler = () => { }) {
     this.hasConsole = hasConsole ?? true;
     this.consoleUID = consoleUID;
     this.l10n = l10n || {};
     this.consoleType = consoleType;
+    this.resizeActionHandler = typeof resizeActionHandler === 'function'
+      ? resizeActionHandler
+      : () => { };
     this.theme = 'light';
 
     /** @type {CodeMirrorInstance|null} */
@@ -26,6 +30,8 @@ export default class ConsoleManager {
 
     /** @type {HTMLElement|null} */
     this._consoleElement = null;
+
+    this._resizeFrame = null;
   }
 
   /**
@@ -75,7 +81,8 @@ export default class ConsoleManager {
         isConsole: true,
         highlightActiveLine: false,
         showLineNumbers: false,
-        theme: this.theme
+        theme: this.theme,
+        resizeActionHandler: () => this.triggerResizeAction(),
       }
     );
   }
@@ -105,6 +112,7 @@ export default class ConsoleManager {
 
     const oldCode = this._consoleInstance.getCode();
     this._consoleInstance.setCode(oldCode + line);
+    this.triggerResizeAction();
   }
 
   showConsole() {
@@ -120,6 +128,7 @@ export default class ConsoleManager {
     }
 
     wrapper.classList.remove('hidden');
+    this.triggerResizeAction();
   }
 
   /**
@@ -128,6 +137,7 @@ export default class ConsoleManager {
   clearConsole() {
     if (!this._consoleInstance) return;
     this._consoleInstance.setCode('');
+    this.triggerResizeAction();
   }
 
   /**
@@ -143,6 +153,7 @@ export default class ConsoleManager {
    */
   setFullscreenLines(lines) {
     this._consoleInstance?.setFixedLines(lines);
+    this.triggerResizeAction();
   }
 
   /**
@@ -150,6 +161,27 @@ export default class ConsoleManager {
    */
   restoreConsoleHeight() {
     this._consoleInstance?.restoreDynamicHeight();
+    this.triggerResizeAction();
+  }
+
+  /**
+   * Schedules one resize callback on the next animation frame.
+   * @returns {void}
+   */
+  triggerResizeAction() {
+    if (typeof window?.requestAnimationFrame !== 'function') {
+      this.resizeActionHandler();
+      return;
+    }
+
+    if (this._resizeFrame !== null) {
+      window.cancelAnimationFrame(this._resizeFrame);
+    }
+
+    this._resizeFrame = window.requestAnimationFrame(() => {
+      this._resizeFrame = null;
+      this.resizeActionHandler();
+    });
   }
 
   /**
@@ -157,6 +189,11 @@ export default class ConsoleManager {
    * @returns {void}
    */
   destroy() {
+    if (this._resizeFrame !== null && typeof window?.cancelAnimationFrame === 'function') {
+      window.cancelAnimationFrame(this._resizeFrame);
+      this._resizeFrame = null;
+    }
+
     this._consoleInstance?.destroy?.();
     this._consoleInstance = null;
 

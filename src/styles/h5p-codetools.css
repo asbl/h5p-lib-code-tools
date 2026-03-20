@@ -485,6 +485,15 @@
   border-top: 1px solid var(--code-surface-border);
 }
 
+.code_container .console-body .cm-line.cm-console-error-line {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.code_container.theme-dark .console-body .cm-line.cm-console-error-line {
+  color: #f87171;
+}
+
 .code_container .console-body:focus-visible {
   outline: none;
 }

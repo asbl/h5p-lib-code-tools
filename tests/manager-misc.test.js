@@ -414,7 +414,24 @@ describe('ConsoleManager', () => {
   });
 
   it('creates a console editor and forwards console operations', async () => {
-    const manager = new ConsoleManager(true, 'console', { console: 'Console' });
+    const resizeActionHandler = vi.fn();
+    const requestAnimationFrameMock = vi
+      .spyOn(window, 'requestAnimationFrame')
+      .mockImplementation((callback) => {
+        callback();
+        return 1;
+      });
+    const cancelAnimationFrameMock = vi
+      .spyOn(window, 'cancelAnimationFrame')
+      .mockImplementation(() => { });
+
+    const manager = new ConsoleManager(
+      true,
+      'console',
+      { console: 'Console' },
+      'codemirror',
+      resizeActionHandler,
+    );
 
     manager.setTheme('dark');
     manager.getDOM();
@@ -443,6 +460,10 @@ describe('ConsoleManager', () => {
     expect(manager._consoleInstance.setFixedLines).toHaveBeenCalledWith(12);
     expect(manager._consoleInstance.restoreDynamicHeight).toHaveBeenCalled();
     expect(manager._consoleInstance.setTheme).toHaveBeenCalledWith('light');
+    expect(resizeActionHandler).toHaveBeenCalled();
+
+    requestAnimationFrameMock.mockRestore();
+    cancelAnimationFrameMock.mockRestore();
   });
 });
 
