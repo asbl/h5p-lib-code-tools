@@ -133,8 +133,34 @@ export default class CodeContainer {
     return this.instructionsManager;
   }
 
+  /**
+   * Resolves package names used for package-specific Blockly categories.
+   * Prefers explicit `blocklyPackages`, then legacy `packages`, then
+   * derives packages from the H5P instance when available.
+   * @param {object} [options] Container options.
+   * @returns {string[]} Normalized package names.
+   */
+  resolveBlocklyPackages(options = {}) {
+    if (Array.isArray(options?.blocklyPackages)) {
+      return options.blocklyPackages;
+    }
+
+    if (Array.isArray(options?.packages)) {
+      return options.packages;
+    }
+
+    const instancePackages = this.h5pInstance?.getPyodidePackages?.();
+    if (Array.isArray(instancePackages)) {
+      return instancePackages;
+    }
+
+    return [];
+  }
+
   getEditorManager(parent, options) {
     if (!this._editorManager) {
+      const blocklyPackages = this.resolveBlocklyPackages(options);
+
       this._editorManager = new EditorManager(
         options?.code || '',
         this.codingLanguage || 'peudocode',
@@ -155,7 +181,7 @@ export default class CodeContainer {
           sourceFiles: Array.isArray(options?.sourceFiles) ? options.sourceFiles : [],
           editorMode: options?.editorMode || 'code',
           blocklyCategories: options?.blocklyCategories ?? null,
-          blocklyPackages: Array.isArray(options?.blocklyPackages) ? options.blocklyPackages : [],
+          blocklyPackages,
           onOpenFileManager: () => this.showFileManagerPage(),
           onCloseFileManager: () => this.showCodePage?.() || this.getPageManager().showPage('code'),
         },

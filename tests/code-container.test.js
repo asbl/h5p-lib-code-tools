@@ -290,4 +290,59 @@ describe('CodeContainer theme toggle', () => {
 
     expect(showPage).toHaveBeenCalledWith('files');
   });
+
+  it('resolves blockly packages from explicit blocklyPackages option', () => {
+    const getPyodidePackages = vi.fn(() => ['numpy']);
+    const container = createContainer({
+      h5pInstance: { getPyodidePackages },
+    });
+
+    const editorManager = container.getEditorManager(container.parent, {
+      editorMode: 'blocks',
+      blocklyPackages: ['matplotlib'],
+    });
+
+    expect(editorManager.blocklyPackages).toEqual(['matplotlib']);
+    expect(getPyodidePackages).not.toHaveBeenCalled();
+  });
+
+  it('falls back to legacy packages option when blocklyPackages is missing', () => {
+    const container = createContainer();
+
+    const editorManager = container.getEditorManager(container.parent, {
+      editorMode: 'blocks',
+      packages: ['numpy', 'matplotlib'],
+    });
+
+    expect(editorManager.blocklyPackages).toEqual(['numpy', 'matplotlib']);
+  });
+
+  it('falls back to h5pInstance.getPyodidePackages when options do not provide packages', () => {
+    const getPyodidePackages = vi.fn(() => ['numpy', 'scipy']);
+    const container = createContainer({
+      h5pInstance: { getPyodidePackages },
+    });
+
+    const editorManager = container.getEditorManager(container.parent, {
+      editorMode: 'blocks',
+    });
+
+    expect(getPyodidePackages).toHaveBeenCalledTimes(1);
+    expect(editorManager.blocklyPackages).toEqual(['numpy', 'scipy']);
+  });
+
+  it('respects explicit empty blocklyPackages without fallback', () => {
+    const getPyodidePackages = vi.fn(() => ['numpy']);
+    const container = createContainer({
+      h5pInstance: { getPyodidePackages },
+    });
+
+    const editorManager = container.getEditorManager(container.parent, {
+      editorMode: 'blocks',
+      blocklyPackages: [],
+    });
+
+    expect(editorManager.blocklyPackages).toEqual([]);
+    expect(getPyodidePackages).not.toHaveBeenCalled();
+  });
 });
