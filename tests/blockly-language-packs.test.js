@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as Blockly from 'blockly';
+import { pythonGenerator } from 'blockly/python';
 import {
   buildFilteredToolbox,
   buildPackageToolbox,
@@ -174,6 +175,10 @@ describe('buildPackageToolbox', () => {
       'miniworlds_create_actor',
       'miniworlds_actor_add_costume',
       'miniworlds_actor_move',
+      'miniworlds_actor_event_lifecycle',
+      'miniworlds_actor_event_key_down',
+      'miniworlds_actor_event_key_pressed',
+      'miniworlds_world_event',
       'miniworlds_world_run',
     ]);
   });
@@ -197,6 +202,57 @@ describe('buildPackageToolbox', () => {
     expect(Blockly.Blocks.miniworlds_create_actor).toBeDefined();
     expect(Blockly.Blocks.miniworlds_actor_add_costume).toBeDefined();
     expect(Blockly.Blocks.miniworlds_actor_move).toBeDefined();
+    expect(Blockly.Blocks.miniworlds_actor_event_lifecycle).toBeDefined();
+    expect(Blockly.Blocks.miniworlds_actor_event_key_down).toBeDefined();
+    expect(Blockly.Blocks.miniworlds_actor_event_key_pressed).toBeDefined();
+    expect(Blockly.Blocks.miniworlds_world_event).toBeDefined();
     expect(Blockly.Blocks.miniworlds_world_run).toBeDefined();
+  });
+
+  it('generates Miniworlds actor key-down event handlers with body fallback', () => {
+    buildPackageToolbox(toolbox, 'python', ['miniworlds']);
+
+    const block = {
+      getFieldValue: (fieldName) => ({
+        ACTOR_VAR: 'player',
+        KEY: 'w',
+      })[fieldName],
+    };
+    const generatorWithBody = {
+      statementToCode: () => '    player.move_up()\n',
+    };
+    const generatorWithoutBody = {
+      statementToCode: () => '',
+    };
+
+    const handlerCode = pythonGenerator.forBlock.miniworlds_actor_event_key_down(
+      block,
+      generatorWithBody,
+    );
+    const fallbackCode = pythonGenerator.forBlock.miniworlds_actor_event_key_down(
+      block,
+      generatorWithoutBody,
+    );
+
+    expect(handlerCode).toBe('@player.register\ndef on_key_down_w(self):\n    player.move_up()\n');
+    expect(fallbackCode).toBe('@player.register\ndef on_key_down_w(self):\n    pass\n');
+  });
+
+  it('generates Miniworlds world events using selected event name', () => {
+    buildPackageToolbox(toolbox, 'python', ['miniworlds']);
+
+    const block = {
+      getFieldValue: (fieldName) => ({
+        WORLD_VAR: 'world',
+        EVENT_NAME: 'act',
+      })[fieldName],
+    };
+    const generator = {
+      statementToCode: () => '    print("tick")\n',
+    };
+
+    const code = pythonGenerator.forBlock.miniworlds_world_event(block, generator);
+
+    expect(code).toBe('@world.register\ndef act(self):\n    print("tick")\n');
   });
 });

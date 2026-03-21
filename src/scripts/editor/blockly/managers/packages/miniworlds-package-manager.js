@@ -21,6 +21,17 @@ function sanitizePythonIdentifier(value, fallback) {
 }
 
 /**
+ * Returns the generated statement body or a Python pass fallback.
+ * @param {object} block Blockly block.
+ * @param {object} generator Blockly generator.
+ * @returns {string} Indented body code.
+ */
+function getEventBody(block, generator) {
+  const body = generator.statementToCode(block, 'BODY');
+  return body || '    pass\n';
+}
+
+/**
  * Adds Miniworlds-specific Blockly blocks and category definition.
  */
 export default class MiniworldsPackageManager {
@@ -116,6 +127,10 @@ export default class MiniworldsPackageManager {
           },
         },
         { kind: 'block', type: 'miniworlds_actor_move' },
+        { kind: 'block', type: 'miniworlds_actor_event_lifecycle' },
+        { kind: 'block', type: 'miniworlds_actor_event_key_down' },
+        { kind: 'block', type: 'miniworlds_actor_event_key_pressed' },
+        { kind: 'block', type: 'miniworlds_world_event' },
         { kind: 'block', type: 'miniworlds_world_run' },
       ],
     };
@@ -248,6 +263,83 @@ export default class MiniworldsPackageManager {
       };
     }
 
+    if (!Blockly.Blocks.miniworlds_actor_event_lifecycle) {
+      Blockly.Blocks.miniworlds_actor_event_lifecycle = {
+        init() {
+          this.appendDummyInput()
+            .appendField('event actor')
+            .appendField(new Blockly.FieldTextInput('player'), 'ACTOR_VAR')
+            .appendField(new Blockly.FieldDropdown([
+              ['on_setup', 'on_setup'],
+              ['act', 'act'],
+            ]), 'EVENT_NAME');
+          this.appendStatementInput('BODY').appendField('do');
+          this.setPreviousStatement(true, null);
+          this.setNextStatement(true, null);
+          this.setColour(MINIWORLDS_CATEGORY_COLOUR);
+          this.setTooltip('Registriert ein Actor-Lifecycle-Event.');
+        },
+      };
+    }
+
+    if (!Blockly.Blocks.miniworlds_actor_event_key_down) {
+      Blockly.Blocks.miniworlds_actor_event_key_down = {
+        init() {
+          this.appendDummyInput()
+            .appendField('event actor')
+            .appendField(new Blockly.FieldTextInput('player'), 'ACTOR_VAR')
+            .appendField('on_key_down')
+            .appendField(new Blockly.FieldDropdown([
+              ['w', 'w'],
+              ['a', 'a'],
+              ['s', 's'],
+              ['d', 'd'],
+              ['space', 'space'],
+            ]), 'KEY');
+          this.appendStatementInput('BODY').appendField('do');
+          this.setPreviousStatement(true, null);
+          this.setNextStatement(true, null);
+          this.setColour(MINIWORLDS_CATEGORY_COLOUR);
+          this.setTooltip('Registriert ein key-down-Event fuer eine Taste.');
+        },
+      };
+    }
+
+    if (!Blockly.Blocks.miniworlds_actor_event_key_pressed) {
+      Blockly.Blocks.miniworlds_actor_event_key_pressed = {
+        init() {
+          this.appendDummyInput()
+            .appendField('event actor')
+            .appendField(new Blockly.FieldTextInput('player'), 'ACTOR_VAR')
+            .appendField('on_key_pressed(keys)');
+          this.appendStatementInput('BODY').appendField('do');
+          this.setPreviousStatement(true, null);
+          this.setNextStatement(true, null);
+          this.setColour(MINIWORLDS_CATEGORY_COLOUR);
+          this.setTooltip('Registriert ein key-pressed-Event mit keys-Parameter.');
+        },
+      };
+    }
+
+    if (!Blockly.Blocks.miniworlds_world_event) {
+      Blockly.Blocks.miniworlds_world_event = {
+        init() {
+          this.appendDummyInput()
+            .appendField('event world')
+            .appendField(new Blockly.FieldTextInput('world'), 'WORLD_VAR')
+            .appendField(new Blockly.FieldDropdown([
+              ['on_setup', 'on_setup'],
+              ['act', 'act'],
+            ]), 'EVENT_NAME');
+          this.appendStatementInput('BODY').appendField('do');
+          this.setPreviousStatement(true, null);
+          this.setNextStatement(true, null);
+          this.setColour(MINIWORLDS_CATEGORY_COLOUR);
+          this.setTooltip('Registriert ein World-Event.');
+        },
+      };
+    }
+
     if (!pythonGenerator.forBlock.miniworlds_import_core) {
       pythonGenerator.forBlock.miniworlds_import_core = () => 'from miniworlds import World, Actor\n';
     }
@@ -291,6 +383,41 @@ export default class MiniworldsPackageManager {
         const actorVar = sanitizePythonIdentifier(block.getFieldValue('ACTOR_VAR'), 'player');
         const direction = String(block.getFieldValue('DIRECTION') || 'move_right').trim();
         return `${actorVar}.${direction}()\n`;
+      };
+    }
+
+    if (!pythonGenerator.forBlock.miniworlds_actor_event_lifecycle) {
+      pythonGenerator.forBlock.miniworlds_actor_event_lifecycle = (block, generator) => {
+        const actorVar = sanitizePythonIdentifier(block.getFieldValue('ACTOR_VAR'), 'player');
+        const eventName = String(block.getFieldValue('EVENT_NAME') || 'act').trim();
+        const body = getEventBody(block, generator);
+        return `@${actorVar}.register\ndef ${eventName}(self):\n${body}`;
+      };
+    }
+
+    if (!pythonGenerator.forBlock.miniworlds_actor_event_key_down) {
+      pythonGenerator.forBlock.miniworlds_actor_event_key_down = (block, generator) => {
+        const actorVar = sanitizePythonIdentifier(block.getFieldValue('ACTOR_VAR'), 'player');
+        const keySuffix = sanitizePythonIdentifier(block.getFieldValue('KEY'), 'w');
+        const body = getEventBody(block, generator);
+        return `@${actorVar}.register\ndef on_key_down_${keySuffix}(self):\n${body}`;
+      };
+    }
+
+    if (!pythonGenerator.forBlock.miniworlds_actor_event_key_pressed) {
+      pythonGenerator.forBlock.miniworlds_actor_event_key_pressed = (block, generator) => {
+        const actorVar = sanitizePythonIdentifier(block.getFieldValue('ACTOR_VAR'), 'player');
+        const body = getEventBody(block, generator);
+        return `@${actorVar}.register\ndef on_key_pressed(self, keys):\n${body}`;
+      };
+    }
+
+    if (!pythonGenerator.forBlock.miniworlds_world_event) {
+      pythonGenerator.forBlock.miniworlds_world_event = (block, generator) => {
+        const worldVar = sanitizePythonIdentifier(block.getFieldValue('WORLD_VAR'), 'world');
+        const eventName = String(block.getFieldValue('EVENT_NAME') || 'act').trim();
+        const body = getEventBody(block, generator);
+        return `@${worldVar}.register\ndef ${eventName}(self):\n${body}`;
       };
     }
 
