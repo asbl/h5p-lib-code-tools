@@ -99,6 +99,9 @@ export default class EditorManager {
     // Per-language category selection for Blockly (null = full toolbox).
     this.blocklyCategories = workspaceOptions?.blocklyCategories ?? null;
 
+    // CodeContainer for accessing uploaded images/sounds in Blockly.
+    this.codeContainer = workspaceOptions?.codeContainer ?? null;
+
     // Selected runtime packages for package-specific Blockly categories.
     this.blocklyPackages = Array.isArray(workspaceOptions?.blocklyPackages)
       ? workspaceOptions.blocklyPackages
@@ -810,6 +813,7 @@ export default class EditorManager {
           editorMode: this.editorMode,
           blocklyCategories: this.blocklyCategories,
           blocklyPackages: this.blocklyPackages,
+          codeContainer: this.codeContainer,
         }
       );
     } else {

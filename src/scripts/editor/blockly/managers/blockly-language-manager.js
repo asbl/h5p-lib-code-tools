@@ -3,6 +3,7 @@ import MatplotlibPackageManager from './packages/matplotlib-package-manager.js';
 import MiniworldsPackageManager from './packages/miniworlds-package-manager.js';
 import NumpyPackageManager from './packages/numpy-package-manager.js';
 import ScipyPackageManager from './packages/scipy-package-manager.js';
+import AssetsBlockProvider from './assets-block-provider.js';
 
 const PACKAGE_LANGUAGES = new Set(['python', 'pseudocode']);
 
@@ -113,12 +114,15 @@ export default class BlocklyLanguageManager {
    * @param {string} codingLanguage Active coding language.
    * @param {string[]} packageNames Selected package names.
    * @param {Array<object>} packageManagers Package manager instances.
+   * @param {object|null} codeContainer CodeContainer for asset access.
    */
-  constructor(codingLanguage, packageNames = [], packageManagers = DEFAULT_PACKAGE_MANAGERS) {
+  constructor(codingLanguage, packageNames = [], packageManagers = DEFAULT_PACKAGE_MANAGERS, codeContainer = null) {
     this.codingLanguage = codingLanguage;
     this.packageNames = Array.isArray(packageNames) ? packageNames : [];
     this.packageManagers = Array.isArray(packageManagers) ? packageManagers : DEFAULT_PACKAGE_MANAGERS;
+    this.codeContainer = codeContainer;
     this.languagePack = getLanguagePack(codingLanguage);
+    this.assetsBlockProvider = codeContainer ? new AssetsBlockProvider(codeContainer) : null;
   }
 
   /**
@@ -131,6 +135,7 @@ export default class BlocklyLanguageManager {
 
   /**
    * Builds the effective toolbox for the current language and package selection.
+   * Includes asset blocks (images/sounds) if codeContainer is available.
    * @param {Record<string, boolean>|null|undefined} categorySelection Category selection map.
    * @returns {object} Filtered toolbox.
    */
@@ -142,8 +147,23 @@ export default class BlocklyLanguageManager {
       this.packageManagers,
     );
 
+    // Add asset blocks category if available
+    let toolboxWithAssets = packageToolbox;
+    if (this.assetsBlockProvider) {
+      const assetCategory = this.assetsBlockProvider.buildCategory();
+      if (assetCategory) {
+        toolboxWithAssets = {
+          ...packageToolbox,
+          contents: [
+            ...packageToolbox.contents,
+            assetCategory,
+          ],
+        };
+      }
+    }
+
     return buildFilteredToolbox(
-      packageToolbox,
+      toolboxWithAssets,
       categorySelection,
       this.languagePack.categoryFieldMap ?? {},
     );

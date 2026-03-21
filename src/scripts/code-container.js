@@ -219,6 +219,7 @@ export default class CodeContainer {
           editorMode: options?.editorMode || 'code',
           blocklyCategories: options?.blocklyCategories ?? null,
           blocklyPackages,
+          codeContainer: this,
           onOpenFileManager: () => this.showFileManagerPage(),
           onCloseFileManager: () => this.showCodePage?.() || this.getPageManager().showPage('code'),
         },

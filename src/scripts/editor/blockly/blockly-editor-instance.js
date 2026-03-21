@@ -35,6 +35,7 @@ export default class BlocklyEditorInstance {
       editorMode: 'blocks',
       blocklyCategories: null,
       blocklyPackages: [],
+      codeContainer: null,
       ...options,
     };
     this.options.blocklyPackages = Array.isArray(this.options.blocklyPackages)
@@ -44,6 +45,8 @@ export default class BlocklyEditorInstance {
     this._languageManager = new BlocklyLanguageManager(
       codingLanguage,
       this.options.blocklyPackages,
+      undefined,
+      this.options.codeContainer,
     );
     this._languagePack = this._languageManager.getLanguagePack();
     this._layoutManager = new BlocklyLayoutManager(this.parentElement);
