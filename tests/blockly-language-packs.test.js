@@ -162,6 +162,22 @@ describe('buildPackageToolbox', () => {
     ]);
   });
 
+  it('adds a Miniworlds category when miniworlds is selected', () => {
+    const packageToolbox = buildPackageToolbox(toolbox, 'python', ['miniworlds']);
+
+    const miniworldsCategories = packageToolbox.contents.filter((category) => category.name === 'Miniworlds');
+    expect(miniworldsCategories).toHaveLength(1);
+    expect(miniworldsCategories[0].contents.map((item) => item.type)).toEqual([
+      'miniworlds_import_core',
+      'miniworlds_create_world',
+      'miniworlds_add_background',
+      'miniworlds_create_actor',
+      'miniworlds_actor_add_costume',
+      'miniworlds_actor_move',
+      'miniworlds_world_run',
+    ]);
+  });
+
   it('registers Blockly block types required by the Matplotlib category', () => {
     buildPackageToolbox(toolbox, 'python', ['matplotlib']);
 
@@ -170,5 +186,17 @@ describe('buildPackageToolbox', () => {
     expect(Blockly.Blocks.matplotlib_plot_line).toBeDefined();
     expect(Blockly.Blocks.matplotlib_set_title).toBeDefined();
     expect(Blockly.Blocks.matplotlib_show_plot).toBeDefined();
+  });
+
+  it('registers Blockly block types required by the Miniworlds category', () => {
+    buildPackageToolbox(toolbox, 'python', ['miniworlds']);
+
+    expect(Blockly.Blocks.miniworlds_import_core).toBeDefined();
+    expect(Blockly.Blocks.miniworlds_create_world).toBeDefined();
+    expect(Blockly.Blocks.miniworlds_add_background).toBeDefined();
+    expect(Blockly.Blocks.miniworlds_create_actor).toBeDefined();
+    expect(Blockly.Blocks.miniworlds_actor_add_costume).toBeDefined();
+    expect(Blockly.Blocks.miniworlds_actor_move).toBeDefined();
+    expect(Blockly.Blocks.miniworlds_world_run).toBeDefined();
   });
 });

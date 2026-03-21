@@ -1,5 +1,6 @@
 import { getLanguagePack } from '../blockly-language-packs.js';
 import MatplotlibPackageManager from './packages/matplotlib-package-manager.js';
+import MiniworldsPackageManager from './packages/miniworlds-package-manager.js';
 import NumpyPackageManager from './packages/numpy-package-manager.js';
 import ScipyPackageManager from './packages/scipy-package-manager.js';
 
@@ -8,6 +9,7 @@ const PACKAGE_LANGUAGES = new Set(['python', 'pseudocode']);
 const DEFAULT_PACKAGE_MANAGERS = [
   new NumpyPackageManager(),
   new MatplotlibPackageManager(),
+  new MiniworldsPackageManager(),
   new ScipyPackageManager(),
 ];
 
