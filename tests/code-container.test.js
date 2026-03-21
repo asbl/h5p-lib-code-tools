@@ -299,10 +299,10 @@ describe('CodeContainer theme toggle', () => {
 
     const editorManager = container.getEditorManager(container.parent, {
       editorMode: 'blocks',
-      blocklyPackages: ['matplotlib'],
+      blocklyPackages: [' MatPlotLib ', 'numpy', 'NUMPY'],
     });
 
-    expect(editorManager.blocklyPackages).toEqual(['matplotlib']);
+    expect(editorManager.blocklyPackages).toEqual(['matplotlib', 'numpy']);
     expect(getPyodidePackages).not.toHaveBeenCalled();
   });
 
@@ -311,7 +311,11 @@ describe('CodeContainer theme toggle', () => {
 
     const editorManager = container.getEditorManager(container.parent, {
       editorMode: 'blocks',
-      packages: ['numpy', 'matplotlib'],
+      packages: [
+        { package: ' NumPy ' },
+        { package: { value: 'matplotlib' } },
+        { value: 'numpy' },
+      ],
     });
 
     expect(editorManager.blocklyPackages).toEqual(['numpy', 'matplotlib']);

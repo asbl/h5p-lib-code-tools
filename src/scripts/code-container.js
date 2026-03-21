@@ -134,6 +134,43 @@ export default class CodeContainer {
   }
 
   /**
+   * Normalizes package entries to lowercase names and removes duplicates.
+   * @param {Array<*>} packageEntries Raw package entries.
+   * @returns {string[]} Normalized package names.
+   */
+  normalizeBlocklyPackages(packageEntries) {
+    const normalizedPackages = [];
+    const seen = new Set();
+
+    (Array.isArray(packageEntries) ? packageEntries : []).forEach((entry) => {
+      let packageName = null;
+
+      if (typeof entry === 'string') {
+        packageName = entry;
+      }
+      else if (typeof entry?.package === 'string') {
+        packageName = entry.package;
+      }
+      else if (typeof entry?.package?.value === 'string') {
+        packageName = entry.package.value;
+      }
+      else if (typeof entry?.value === 'string') {
+        packageName = entry.value;
+      }
+
+      const normalizedName = String(packageName || '').trim().toLowerCase();
+      if (!normalizedName || seen.has(normalizedName)) {
+        return;
+      }
+
+      seen.add(normalizedName);
+      normalizedPackages.push(normalizedName);
+    });
+
+    return normalizedPackages;
+  }
+
+  /**
    * Resolves package names used for package-specific Blockly categories.
    * Prefers explicit `blocklyPackages`, then legacy `packages`, then
    * derives packages from the H5P instance when available.
@@ -142,16 +179,16 @@ export default class CodeContainer {
    */
   resolveBlocklyPackages(options = {}) {
     if (Array.isArray(options?.blocklyPackages)) {
-      return options.blocklyPackages;
+      return this.normalizeBlocklyPackages(options.blocklyPackages);
     }
 
     if (Array.isArray(options?.packages)) {
-      return options.packages;
+      return this.normalizeBlocklyPackages(options.packages);
     }
 
     const instancePackages = this.h5pInstance?.getPyodidePackages?.();
     if (Array.isArray(instancePackages)) {
-      return instancePackages;
+      return this.normalizeBlocklyPackages(instancePackages);
     }
 
     return [];
@@ -163,7 +200,7 @@ export default class CodeContainer {
 
       this._editorManager = new EditorManager(
         options?.code || '',
-        this.codingLanguage || 'peudocode',
+        this.codingLanguage || 'pseudocode',
         options?.preCode || '',
         options?.postCode || '',
         options?.fixedSize ?? true,
