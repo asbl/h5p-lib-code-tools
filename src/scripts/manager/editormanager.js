@@ -237,6 +237,14 @@ export default class EditorManager {
   }
 
   /**
+   * Focuses the active editor implementation when available.
+   * @returns {void}
+   */
+  focus() {
+    this._editorInstance?.focus?.();
+  }
+
+  /**
    * Persists the active code and disposes the mounted editor instance.
    * @returns {void}
    */
@@ -754,10 +762,19 @@ export default class EditorManager {
     if (index === -1 || this._workspace.files[index].isEntry) {
       return;
     }
+
+    const removedWasActive = this._workspace.activeFileName === name;
+    this.persistActiveFileCode();
     this._workspace.files.splice(index, 1);
-    if (this._workspace.activeFileName === name) {
+
+    if (removedWasActive) {
       this._workspace.activeFileName = this._workspace.entryFileName;
+
+      if (this._editorElement) {
+        this.mountEditorForActiveFile();
+      }
     }
+
     this.renderFileTabs();
     this.renderFileManager();
     this.onChangeCallback(this.getCode());

@@ -78,4 +78,36 @@ describe('CodeMirrorInstance', () => {
 
     expect(instance.getParentElement()).toBe(element);
   });
+
+  it('stops printable keypress events from bubbling out of the editor', () => {
+    const contentDOM = document.createElement('div');
+    const event = new KeyboardEvent('keypress', { key: 'x', bubbles: true });
+    const stopPropagation = vi.spyOn(event, 'stopPropagation');
+    const instance = Object.create(CodeMirrorInstance.prototype);
+
+    instance.options = { readonly: false };
+    instance.isConsole = false;
+    instance.editorView = { contentDOM };
+
+    instance.shieldPrintableKeypresses();
+    contentDOM.dispatchEvent(event);
+
+    expect(stopPropagation).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not stop bubbling for modified keypress events', () => {
+    const contentDOM = document.createElement('div');
+    const event = new KeyboardEvent('keypress', { key: 'x', ctrlKey: true, bubbles: true });
+    const stopPropagation = vi.spyOn(event, 'stopPropagation');
+    const instance = Object.create(CodeMirrorInstance.prototype);
+
+    instance.options = { readonly: false };
+    instance.isConsole = false;
+    instance.editorView = { contentDOM };
+
+    instance.shieldPrintableKeypresses();
+    contentDOM.dispatchEvent(event);
+
+    expect(stopPropagation).not.toHaveBeenCalled();
+  });
 });

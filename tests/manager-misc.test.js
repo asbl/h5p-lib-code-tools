@@ -301,6 +301,45 @@ describe('EditorManager', () => {
     expect(manager._isFileManagerActive).toBe(false);
   });
 
+  it('does not leak deleted active file code into entry file', async () => {
+    const onChange = vi.fn();
+    const manager = new EditorManager(
+      'print("main")',
+      'python',
+      '',
+      '',
+      true,
+      5,
+      'editor-delete',
+      'pre-delete',
+      'post-delete',
+      onChange,
+      vi.fn(),
+      'light',
+      {
+        enabled: true,
+        entryFileName: 'main.py',
+        sourceFiles: [
+          { name: 'helper.py', code: 'print("helper")', visible: true, editable: true },
+        ],
+      },
+    );
+
+    const dom = manager.getDOM();
+    document.body.appendChild(dom);
+    await manager.setupEditors();
+
+    manager.setActiveFile('helper.py');
+    manager._editorInstance.currentCode = 'print("helper changed")';
+    manager.removeWorkspaceFile('helper.py');
+
+    const snapshot = manager.getWorkspaceSnapshot();
+    expect(snapshot.files.map((file) => file.name)).toEqual(['main.py']);
+    expect(snapshot.activeFileName).toBe('main.py');
+    expect(snapshot.files[0].code).toBe('print("main")');
+    expect(onChange).toHaveBeenCalled();
+  });
+
   it('uses CodeMirrorInstance when editorMode is "code" (default)', async () => {
     const manager = new EditorManager(
       'print(1)', 'python', '', '', true, 5, 'editor', 'pre', 'post',

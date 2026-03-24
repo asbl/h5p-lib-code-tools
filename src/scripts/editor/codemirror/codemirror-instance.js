@@ -113,6 +113,7 @@ export default class CodeMirrorInstance {
 
     if (this.options.minHeightFromContent) this.applyMinHeightFromContent();
     this.attachResizeObserver();
+    this.shieldPrintableKeypresses();
     if (!this.isConsole) this.setupRunShortcut();
   }
 
@@ -263,6 +264,26 @@ export default class CodeMirrorInstance {
     });
   }
 
+  shieldPrintableKeypresses() {
+    if (!this.editorView || this.options.readonly || this.isConsole) {
+      return;
+    }
+
+    this.editorView.contentDOM.addEventListener('keypress', (event) => {
+      if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) {
+        return;
+      }
+
+      if (typeof event.key !== 'string') {
+        return;
+      }
+
+      if (event.key.length === 1 || event.key === 'Enter') {
+        event.stopPropagation();
+      }
+    });
+  }
+
   handleChange() {
     this.options.onChangeCallback(this.getCode());
   }
@@ -294,6 +315,10 @@ export default class CodeMirrorInstance {
     this.editorView.dispatch({
       effects: this.themeCompartment.reconfigure(this.getThemeExtension())
     });
+  }
+
+  focus() {
+    this.editorView?.focus();
   }
 
   run() {

@@ -101,6 +101,19 @@ export default class BlocklyWorkspaceManager {
     Blockly.svgResize(this.workspace);
   }
 
+  /** Focuses the Blockly workspace container for keyboard interaction. */
+  focus() {
+    if (!this.blocklyDiv) {
+      return;
+    }
+
+    if (!this.blocklyDiv.hasAttribute('tabindex')) {
+      this.blocklyDiv.tabIndex = 0;
+    }
+
+    this.blocklyDiv.focus();
+  }
+
   /** Disposes observers and workspace instance. */
   destroy() {
     this.resizeObserver?.disconnect();

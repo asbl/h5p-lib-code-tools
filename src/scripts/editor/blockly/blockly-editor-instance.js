@@ -97,6 +97,11 @@ export default class BlocklyEditorInstance {
     this._themeManager.applyContainerTheme(theme);
   }
 
+  /** Focuses the interactive Blockly workspace. */
+  focus() {
+    this._workspaceManager.focus();
+  }
+
   /**
    * Resizes the workspace container to a fixed line-based height.
    * @param {number} lines Number of lines.
