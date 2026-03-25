@@ -90,7 +90,10 @@ export function buildPackageToolbox(
   const additions = selectedPackages
     .map((packageName) => managerMap.get(packageName))
     .filter((manager) => manager?.supportsLanguage(normalizedLanguage))
-    .map((manager) => manager.buildCategory())
+    .flatMap((manager) => {
+      const categoryResult = manager.buildCategory();
+      return Array.isArray(categoryResult) ? categoryResult : [categoryResult];
+    })
     .filter((category) => category?.name && !existingCategoryNames.has(category.name));
 
   if (additions.length === 0) {

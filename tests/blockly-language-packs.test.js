@@ -166,20 +166,36 @@ describe('buildPackageToolbox', () => {
   it('adds a Miniworlds category when miniworlds is selected', () => {
     const packageToolbox = buildPackageToolbox(toolbox, 'python', ['miniworlds']);
 
-    const miniworldsCategories = packageToolbox.contents.filter((category) => category.name === 'Miniworlds');
-    expect(miniworldsCategories).toHaveLength(1);
+    const miniworldsCategories = packageToolbox.contents.filter((category) => (
+      ['Miniworlds', 'World', 'Actor'].includes(category.name)
+    ));
+    expect(miniworldsCategories.map((category) => category.name)).toEqual([
+      'Miniworlds',
+      'World',
+      'Actor',
+    ]);
     expect(miniworldsCategories[0].contents.map((item) => item.type)).toEqual([
       'miniworlds_import_core',
+    ]);
+    expect(miniworldsCategories[1].contents.map((item) => item.type)).toEqual([
       'miniworlds_create_world',
       'miniworlds_add_background',
+      'miniworlds_world_set_attribute',
+      'miniworlds_world_get_attribute',
+      'miniworlds_world_call_method',
+      'miniworlds_world_event',
+      'miniworlds_world_run',
+    ]);
+    expect(miniworldsCategories[2].contents.map((item) => item.type)).toEqual([
       'miniworlds_create_actor',
       'miniworlds_actor_add_costume',
       'miniworlds_actor_move',
+      'miniworlds_actor_set_attribute',
+      'miniworlds_actor_get_attribute',
+      'miniworlds_actor_call_method',
       'miniworlds_actor_event_lifecycle',
       'miniworlds_actor_event_key_down',
       'miniworlds_actor_event_key_pressed',
-      'miniworlds_world_event',
-      'miniworlds_world_run',
     ]);
   });
 
@@ -199,9 +215,15 @@ describe('buildPackageToolbox', () => {
     expect(Blockly.Blocks.miniworlds_import_core).toBeDefined();
     expect(Blockly.Blocks.miniworlds_create_world).toBeDefined();
     expect(Blockly.Blocks.miniworlds_add_background).toBeDefined();
+    expect(Blockly.Blocks.miniworlds_world_set_attribute).toBeDefined();
+    expect(Blockly.Blocks.miniworlds_world_get_attribute).toBeDefined();
+    expect(Blockly.Blocks.miniworlds_world_call_method).toBeDefined();
     expect(Blockly.Blocks.miniworlds_create_actor).toBeDefined();
     expect(Blockly.Blocks.miniworlds_actor_add_costume).toBeDefined();
     expect(Blockly.Blocks.miniworlds_actor_move).toBeDefined();
+    expect(Blockly.Blocks.miniworlds_actor_set_attribute).toBeDefined();
+    expect(Blockly.Blocks.miniworlds_actor_get_attribute).toBeDefined();
+    expect(Blockly.Blocks.miniworlds_actor_call_method).toBeDefined();
     expect(Blockly.Blocks.miniworlds_actor_event_lifecycle).toBeDefined();
     expect(Blockly.Blocks.miniworlds_actor_event_key_down).toBeDefined();
     expect(Blockly.Blocks.miniworlds_actor_event_key_pressed).toBeDefined();
@@ -254,5 +276,52 @@ describe('buildPackageToolbox', () => {
     const code = pythonGenerator.forBlock.miniworlds_world_event(block, generator);
 
     expect(code).toBe('@world.register\ndef act(self):\n    print("tick")\n');
+  });
+
+  it('generates Miniworlds world attribute assignments and reads', () => {
+    buildPackageToolbox(toolbox, 'python', ['miniworlds']);
+
+    const setterBlock = {
+      getFieldValue: (fieldName) => ({
+        WORLD_VAR: 'world',
+        ATTRIBUTE_NAME: 'color',
+      })[fieldName],
+    };
+    const getterBlock = {
+      getFieldValue: (fieldName) => ({
+        WORLD_VAR: 'world',
+        ATTRIBUTE_NAME: 'color',
+      })[fieldName],
+    };
+    const generator = {
+      valueToCode: () => '(100, 100, 100)',
+    };
+
+    const setterCode = pythonGenerator.forBlock.miniworlds_world_set_attribute(setterBlock, generator);
+    const getterCode = pythonGenerator.forBlock.miniworlds_world_get_attribute(getterBlock);
+
+    expect(setterCode).toBe('world.color = (100, 100, 100)\n');
+    expect(getterCode).toEqual(['world.color', expect.any(Number)]);
+  });
+
+  it('generates Miniworlds actor method calls with optional arguments', () => {
+    buildPackageToolbox(toolbox, 'python', ['miniworlds']);
+
+    const block = {
+      getFieldValue: (fieldName) => ({
+        ACTOR_VAR: 'player',
+        METHOD_NAME: 'move_to',
+      })[fieldName],
+    };
+    const generator = {
+      valueToCode: (currentBlock, inputName) => ({
+        ARG1: '10',
+        ARG2: '20',
+      })[inputName] || '',
+    };
+
+    const code = pythonGenerator.forBlock.miniworlds_actor_call_method(block, generator);
+
+    expect(code).toBe('player.move_to(10, 20)\n');
   });
 });
