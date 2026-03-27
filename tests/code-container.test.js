@@ -349,4 +349,62 @@ describe('CodeContainer theme toggle', () => {
     expect(editorManager.blocklyPackages).toEqual([]);
     expect(getPyodidePackages).not.toHaveBeenCalled();
   });
+
+  it('preloads configured default images into the image manager', async () => {
+    const container = createContainer({
+      contentId: 23,
+      enableImageUploads: true,
+      defaultImages: [
+        { path: 'images/background.png', fileName: 'background.png' },
+      ],
+    });
+    const replaceFiles = vi.fn();
+    const bytesToBase64 = vi.fn(() => 'AQI=');
+
+    H5P.getPath = vi.fn((path, contentId) => `/resolved/${contentId}/${path}`);
+    globalThis.fetch = vi.fn(async () => ({
+      ok: true,
+      headers: { get: () => 'image/png' },
+      arrayBuffer: async () => new Uint8Array([1, 2]).buffer,
+    }));
+
+    container.getImageManager = vi.fn(() => ({
+      isEnabled: () => true,
+      getFiles: () => [],
+      bytesToBase64,
+      replaceFiles,
+    }));
+
+    await container.preloadDefaultImages();
+
+    expect(H5P.getPath).toHaveBeenCalledWith('images/background.png', 23);
+    expect(globalThis.fetch).toHaveBeenCalledWith('/resolved/23/images/background.png');
+    expect(bytesToBase64).toHaveBeenCalledTimes(1);
+    expect(replaceFiles).toHaveBeenCalledWith([
+      {
+        name: 'background.png',
+        mimeType: 'image/png',
+        size: 2,
+        data: 'AQI=',
+      },
+    ]);
+  });
+
+  it('skips default-image preload when image uploads are disabled', async () => {
+    const container = createContainer({
+      defaultImages: [{ path: 'images/background.png' }],
+    });
+
+    globalThis.fetch = vi.fn();
+    container.getImageManager = vi.fn(() => ({
+      isEnabled: () => false,
+      getFiles: () => [],
+      bytesToBase64: vi.fn(),
+      replaceFiles: vi.fn(),
+    }));
+
+    await container.preloadDefaultImages();
+
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
 });
