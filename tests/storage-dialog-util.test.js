@@ -11,6 +11,17 @@ vi.mock('sweetalert2-uncensored', () => ({
 import DialogQueue from '../src/scripts/dialog-queue.js';
 import StorageManager from '../src/scripts/manager/storagemanager.js';
 import Util from '../src/scripts/services/util.js';
+import JSZip from 'jszip';
+
+async function createProjectZip(entries = {}) {
+  const zip = new JSZip();
+
+  Object.entries(entries).forEach(([path, value]) => {
+    zip.file(path, value);
+  });
+
+  return zip.generateAsync({ type: 'uint8array' });
+}
 
 describe('DialogQueue', () => {
   beforeEach(() => {
@@ -103,10 +114,17 @@ describe('StorageManager', () => {
     codeContainer = {
       getCode: vi.fn(() => 'print(1)'),
       getEditorManager: vi.fn(() => editorManager),
+      getImageManager: vi.fn(() => ({
+        extensions: ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg', '.webp', '.avif'],
+      })),
+      getSoundManager: vi.fn(() => ({
+        extensions: ['.wav', '.mp3', '.ogg', '.oga', '.m4a', '.aac', '.flac', '.mid', '.midi', '.weba'],
+      })),
       setCode: vi.fn(),
       supportsProjectStorage: vi.fn(() => false),
       getProjectBundle: vi.fn(() => null),
       applyProjectBundle: vi.fn(() => false),
+      options: { entryFileName: 'main.py' },
     };
   });
 
@@ -200,7 +218,7 @@ describe('StorageManager', () => {
     expect(codeContainer.applyProjectBundle).not.toHaveBeenCalled();
   });
 
-  it('downloads a project bundle when the project contains additional files', () => {
+  it('downloads a project bundle as a zip archive when the project contains additional files', async () => {
     const click = vi.fn();
     const originalCreateElement = document.createElement.bind(document);
     const createElement = vi.spyOn(document, 'createElement');
@@ -217,22 +235,93 @@ describe('StorageManager', () => {
     codeContainer.getProjectBundle.mockReturnValue({
       type: 'h5p-python-question-project',
       version: 1,
-      sourceFiles: [],
-      images: [],
-      sounds: [],
+      sourceFiles: [
+        { name: 'main.py', code: 'print(1)' },
+        { name: 'helper.py', code: 'VALUE = 2' },
+      ],
+      images: [
+        { name: 'bg.png', mimeType: 'image/png', size: 2, data: 'AQI=' },
+      ],
+      sounds: [
+        { name: 'beep.wav', mimeType: 'audio/wav', size: 2, data: 'AwQ=' },
+      ],
     });
 
     const manager = new StorageManager(codeContainer, {
-      projectDownloadFilename: 'project.h5pproject',
+      projectDownloadFilename: 'project.zip',
     });
 
-    manager.downloadCode();
+    await manager.downloadCode();
 
     expect(click).toHaveBeenCalledTimes(1);
     expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+
+    const [blob] = URL.createObjectURL.mock.calls[0];
+    const zip = await JSZip.loadAsync(blob);
+
+    await expect(zip.file('main.py').async('string')).resolves.toBe('print(1)');
+    await expect(zip.file('helper.py').async('string')).resolves.toBe('VALUE = 2');
+    await expect(zip.file('images/bg.png').async('uint8array')).resolves.toEqual(new Uint8Array([1, 2]));
+    await expect(zip.file('sounds/beep.wav').async('uint8array')).resolves.toEqual(new Uint8Array([3, 4]));
   });
 
-  it('loads a project bundle and applies it to the container', async () => {
+  it('loads a zip project bundle and applies it to the container', async () => {
+    const originalCreateElement = document.createElement.bind(document);
+    const createElement = vi.spyOn(document, 'createElement');
+
+    codeContainer.supportsProjectStorage.mockReturnValue(true);
+    codeContainer.applyProjectBundle.mockReturnValue(true);
+
+    const zipPayload = await createProjectZip({
+      'main.py': 'print(4)',
+      'helper.py': 'VALUE = 4',
+      'images/background.png': new Uint8Array([1, 2, 3]),
+      'sounds/beep.wav': new Uint8Array([4, 5, 6]),
+    });
+
+    vi.stubGlobal('FileReader', class FileReader {
+      readAsArrayBuffer() {
+        this.onload({
+          target: {
+            result: zipPayload.buffer.slice(
+              zipPayload.byteOffset,
+              zipPayload.byteOffset + zipPayload.byteLength,
+            ),
+          },
+        });
+      }
+    });
+
+    createElement.mockImplementation((tagName) => {
+      const element = originalCreateElement(tagName);
+      if (tagName === 'input') {
+        element.click = () => {
+          selectFile(element, { name: 'project.zip' });
+        };
+      }
+      return element;
+    });
+
+    const manager = new StorageManager(codeContainer);
+
+    await expect(manager.loadFile()).resolves.toEqual(expect.objectContaining({
+      type: 'h5p-python-question-project',
+      version: 1,
+    }));
+    expect(codeContainer.applyProjectBundle).toHaveBeenCalledTimes(1);
+    expect(codeContainer.applyProjectBundle).toHaveBeenCalledWith(expect.objectContaining({
+      entryFileName: 'main.py',
+      sourceFiles: expect.arrayContaining([
+        expect.objectContaining({ name: 'main.py', code: 'print(4)', isEntry: true }),
+        expect.objectContaining({ name: 'helper.py', code: 'VALUE = 4', isEntry: false }),
+      ]),
+      images: [expect.objectContaining({ name: 'background.png', size: 3 })],
+      sounds: [expect.objectContaining({ name: 'beep.wav', size: 3 })],
+    }));
+    expect(editorManager.setCode).not.toHaveBeenCalled();
+  });
+
+  it('loads a legacy JSON project bundle and applies it to the container', async () => {
     const originalCreateElement = document.createElement.bind(document);
     const createElement = vi.spyOn(document, 'createElement');
 
@@ -280,24 +369,27 @@ describe('StorageManager', () => {
       version: 1,
     }));
     expect(codeContainer.applyProjectBundle).toHaveBeenCalledTimes(1);
-    expect(editorManager.setCode).not.toHaveBeenCalled();
   });
 
-  it('rejects invalid project bundles instead of loading them as plain text', async () => {
+  it('rejects invalid zip project structures instead of loading them as plain text', async () => {
     const originalCreateElement = document.createElement.bind(document);
     const createElement = vi.spyOn(document, 'createElement');
 
     codeContainer.supportsProjectStorage.mockReturnValue(true);
 
+    const zipPayload = await createProjectZip({
+      'nested/helper.py': 'VALUE = 1',
+      'images/background.png': new Uint8Array([1]),
+    });
+
     vi.stubGlobal('FileReader', class FileReader {
-      readAsText() {
+      readAsArrayBuffer() {
         this.onload({
           target: {
-            result: JSON.stringify({
-              type: 'h5p-python-question-project',
-              version: 1,
-              sourceFiles: [],
-            }),
+            result: zipPayload.buffer.slice(
+              zipPayload.byteOffset,
+              zipPayload.byteOffset + zipPayload.byteLength,
+            ),
           },
         });
       }
@@ -307,7 +399,7 @@ describe('StorageManager', () => {
       const element = originalCreateElement(tagName);
       if (tagName === 'input') {
         element.click = () => {
-          selectFile(element, { name: 'project.h5pproject' });
+          selectFile(element, { name: 'project.zip' });
         };
       }
       return element;

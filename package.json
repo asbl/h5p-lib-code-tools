@@ -58,6 +58,7 @@
     "caniuse-lite": "^1.0.30001585",
     "dompurify": "^3.0.6",
     "he": "^1.2.0",
+    "jszip": "^3.10.1",
     "marked": "^9.1.6",
     "marked-admonition-extension": "^0.0.4",
     "sweetalert2-uncensored": "^11.10.0-u"
