@@ -36,9 +36,52 @@ export default class DialogQueue {
    * @param {number} [cfg.defaultTimeout=0] - Default timeout (ms) applied to
    *   every dialog unless overridden in the call options. `0` means “no timeout”.
    */
-  constructor({ defaultTimeout = 0 } = {}) {
+  constructor({ defaultTimeout = 0, target = null } = {}) {
     this._tail = Promise.resolve();
     this.defaultTimeout = defaultTimeout;
+    this.target = this.resolveTargetElement(target);
+  }
+
+  /**
+   * Normalizes an optional SweetAlert target element.
+   * @param {*} target Candidate target.
+   * @returns {HTMLElement|null} Valid target element or null.
+   */
+  resolveTargetElement(target) {
+    if (!target) {
+      return null;
+    }
+
+    if (typeof HTMLElement !== 'undefined' && target instanceof HTMLElement) {
+      return target;
+    }
+
+    return null;
+  }
+
+  /**
+   * Updates the default SweetAlert target used by this queue.
+   * @param {*} target Candidate target.
+   * @returns {void}
+   */
+  setTarget(target) {
+    this.target = this.resolveTargetElement(target);
+  }
+
+  /**
+   * Merges queue-level defaults into a SweetAlert config object.
+   * @param {Object} swalConfig Base SweetAlert config.
+   * @returns {Object} Effective config.
+   */
+  getEffectiveSwalConfig(swalConfig) {
+    const cfg = { ...swalConfig };
+
+    // Anchor dialogs to the owning instance when available.
+    if (this.target && !cfg.target) {
+      cfg.target = this.target;
+    }
+
+    return cfg;
   }
 
   /**
@@ -72,7 +115,7 @@ export default class DialogQueue {
     const next = this._tail.then(
       () =>
         new Promise((resolve) => {
-          const swalPromise = Swal.fire(swalConfig);
+          const swalPromise = Swal.fire(this.getEffectiveSwalConfig(swalConfig));
           // ----- normal completion (user clicks confirm) ---------------------------
           swalPromise
             .then((result) => {
