@@ -245,6 +245,14 @@ export default class EditorManager {
   }
 
   /**
+   * Returns the currently mounted editor implementation.
+   * @returns {object|null} Active editor instance.
+   */
+  getActiveEditorInstance() {
+    return this._editorInstance || null;
+  }
+
+  /**
    * Persists the active code and disposes the mounted editor instance.
    * @returns {void}
    */

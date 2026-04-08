@@ -1,5 +1,5 @@
 import { Decoration, EditorView, keymap, lineNumbers } from '@codemirror/view';
-import { Compartment, EditorState, Transaction, StateField, RangeSetBuilder } from '@codemirror/state';
+import { Compartment, EditorState, Transaction, StateEffect, StateField, RangeSetBuilder } from '@codemirror/state';
 import { defaultKeymap, history } from '@codemirror/commands';
 import { python } from '@codemirror/lang-python';
 import { javascript } from '@codemirror/lang-javascript';
@@ -39,6 +39,8 @@ export default class CodeMirrorInstance {
     this.editorView = null;
     this._resizeObserver = null;
     this.themeCompartment = new Compartment();
+    this.inlineDiagnostics = [];
+    this.setInlineDiagnosticsEffect = StateEffect.define();
 
     // Normalize preCode, mainCode (content), postCode with newlines
     this.preCode = this.options.preCode === '' || this.options.preCode.endsWith('\n')
@@ -104,6 +106,7 @@ export default class CodeMirrorInstance {
         }),
         EditorView.editable.of(!this.options.readonly && !this.isConsole),
         this.createReadonlyDecorations(),
+        this.createInlineDiagnosticsDecorations(),
         ...(this.isConsole ? [this.createConsoleErrorLineDecorations()] : []),
         ...this.readOnlyRangesExtension()
       ]
@@ -321,6 +324,20 @@ export default class CodeMirrorInstance {
     this.editorView?.focus();
   }
 
+  setInlineDiagnostics(diagnostics = []) {
+    this.inlineDiagnostics = Array.isArray(diagnostics)
+      ? diagnostics.filter((diagnostic) => diagnostic && typeof diagnostic.from === 'number' && typeof diagnostic.to === 'number')
+      : [];
+
+    if (!this.editorView) {
+      return;
+    }
+
+    this.editorView.dispatch({
+      effects: this.setInlineDiagnosticsEffect.of(this.inlineDiagnostics),
+    });
+  }
+
   run() {
     return true;
   }
@@ -386,6 +403,27 @@ export default class CodeMirrorInstance {
     });
   }
 
+  createInlineDiagnosticsDecorations() {
+    return StateField.define({
+      create: () => this.buildInlineDiagnosticsDecorations(this.inlineDiagnostics),
+
+      update: (decorations, tr) => {
+        const effect = tr.effects.find((candidate) => candidate.is(this.setInlineDiagnosticsEffect));
+        if (effect) {
+          return this.buildInlineDiagnosticsDecorations(effect.value);
+        }
+
+        if (tr.docChanged) {
+          return this.buildInlineDiagnosticsDecorations(this.inlineDiagnostics);
+        }
+
+        return decorations;
+      },
+
+      provide: (field) => EditorView.decorations.from(field)
+    });
+  }
+
   createConsoleErrorLineDecorations() {
     const errorLineDecoration = Decoration.line({ class: 'cm-console-error-line' });
 
@@ -435,6 +473,29 @@ export default class CodeMirrorInstance {
     if (this.postCodeLength > 0) {
       builder.add(postStart, docLength, mark);
     }
+
+    return builder.finish();
+  }
+
+  buildInlineDiagnosticsDecorations(diagnostics = []) {
+    const builder = new RangeSetBuilder();
+
+    diagnostics.forEach((diagnostic) => {
+      const from = Math.max(0, diagnostic.from);
+      const to = Math.max(from, diagnostic.to);
+      const severity = diagnostic.severity === 'error' ? 'error' : 'warning';
+      const message = typeof diagnostic.message === 'string' ? diagnostic.message : '';
+      const decoration = Decoration.mark({
+        class: `cm-inline-diagnostic cm-inline-diagnostic-${severity}`,
+        attributes: message ? { title: message, 'aria-label': message } : {},
+      });
+
+      if (from === to) {
+        return;
+      }
+
+      builder.add(from, to, decoration);
+    });
 
     return builder.finish();
   }
