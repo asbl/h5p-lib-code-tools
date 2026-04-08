@@ -2,7 +2,7 @@
   "title": "Code Tools",
   "description": "Contains various code tools.",
   "majorVersion": 6,
-  "minorVersion": 50,
+  "minorVersion": 61,
   "patchVersion": 0,
   "runnable": 0,
   "coreApi": {
