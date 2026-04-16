@@ -1,5 +1,7 @@
 import CodeMirrorInstance from '../editor/codemirror/codemirror-instance.js';
 import BlocklyEditorInstance from '../editor/blockly/blockly-editor-instance.js';
+import { ensureBlocklyRuntime } from '../editor/blockly/blockly-runtime.js';
+import { ensureCodeMirrorRuntime } from '../editor/codemirror/codemirror-runtime.js';
 
 /**
  * Supported editor mode identifiers.
@@ -76,6 +78,8 @@ export default class EditorManager {
       enabled: workspaceOptions?.enabled === true,
       entryFileName: workspaceOptions?.entryFileName || 'main.py',
       allowAddingFiles: workspaceOptions?.allowAddingFiles === true,
+      blocklyCdnUrl: workspaceOptions?.blocklyCdnUrl || '',
+      codeMirrorCdnUrl: workspaceOptions?.codeMirrorCdnUrl || '',
       sourceFiles: Array.isArray(workspaceOptions?.sourceFiles)
         ? workspaceOptions.sourceFiles
         : [],
@@ -106,6 +110,10 @@ export default class EditorManager {
     this.blocklyPackages = Array.isArray(workspaceOptions?.blocklyPackages)
       ? workspaceOptions.blocklyPackages
       : [];
+    this.blocklyCdnUrl = this.workspaceOptions.blocklyCdnUrl;
+    this.codeMirrorCdnUrl = this.workspaceOptions.codeMirrorCdnUrl;
+    this.codeMirrorLanguageConfig = workspaceOptions?.codeMirrorLanguageConfig || null;
+    this.codeMirrorCompletionConfig = workspaceOptions?.codeMirrorCompletionConfig || null;
   }
 
   /**
@@ -132,6 +140,14 @@ export default class EditorManager {
       return;
     }
 
+    if (this.editorMode === 'blocks' || this.editorMode === 'both') {
+      await ensureBlocklyRuntime(this.blocklyCdnUrl);
+    }
+
+    if (this.editorMode !== 'blocks') {
+      await ensureCodeMirrorRuntime(this.codeMirrorCdnUrl);
+    }
+
     this.renderFileTabs();
     this.mountEditorForActiveFile();
   }
@@ -143,13 +159,13 @@ export default class EditorManager {
 
     const wrapper = document.createElement('div');
     wrapper.className = 'container container-code';
-  this._wrapperElement = wrapper;
+    this._wrapperElement = wrapper;
 
-  const tabs = document.createElement('div');
-  tabs.className = 'editor-file-tabs';
-  tabs.hidden = true;
-  this._tabsElement = tabs;
-  wrapper.appendChild(tabs);
+    const tabs = document.createElement('div');
+    tabs.className = 'editor-file-tabs';
+    tabs.hidden = true;
+    this._tabsElement = tabs;
+    wrapper.appendChild(tabs);
 
     // Main Editor
     const editor = document.createElement('div');
@@ -201,9 +217,7 @@ export default class EditorManager {
     mainFile.code = this.extractEditableCode(code, mainFile);
 
     if (this.getActiveFile()?.name === mainFile.name) {
-      this._editorInstance?.setCode(this.getFileCode(mainFile.name, {
-        includeFixedCode: true,
-      }));
+      this._editorInstance?.setCode(mainFile.code);
     }
   }
 
@@ -222,9 +236,9 @@ export default class EditorManager {
   }
 
   /**
- * Fix the main editor lines (fullscreen)
- * @param {number} lines
- */
+   * Fixes the main editor line count in fullscreen mode.
+   * @param {number} lines - Fixed line count.
+   */
   setFullscreenLines(lines) {
     this._editorInstance?.setFixedLines(lines);
   }
@@ -273,6 +287,20 @@ export default class EditorManager {
   setTheme(theme) {
     this.theme = theme === 'dark' ? 'dark' : 'light';
     this._editorInstance?.setTheme(this.theme);
+  }
+
+  setLanguageConfig(languageConfig = null) {
+    this.codeMirrorLanguageConfig = languageConfig && typeof languageConfig === 'object'
+      ? languageConfig
+      : null;
+    this._editorInstance?.setLanguageConfig?.(this.codeMirrorLanguageConfig);
+  }
+
+  setCompletionConfig(completionConfig = null) {
+    this.codeMirrorCompletionConfig = completionConfig && typeof completionConfig === 'object'
+      ? completionConfig
+      : null;
+    this._editorInstance?.setCompletionConfig?.(this.codeMirrorCompletionConfig);
   }
 
   getWorkspaceSnapshot() {
@@ -532,7 +560,8 @@ export default class EditorManager {
       addButton.addEventListener('click', () => {
         if (this._isFileManagerActive) {
           this.closeFileManager();
-        } else {
+        }
+        else {
           this.openFileManager();
         }
       });
@@ -606,7 +635,8 @@ export default class EditorManager {
         deleteBtn.title = `Delete ${file.name}`;
         deleteBtn.addEventListener('click', () => this._startFileDelete(item, file.name));
         item.appendChild(deleteBtn);
-      } else {
+      }
+      else {
         const badge = document.createElement('span');
         badge.className = 'editor-fm-badge';
         badge.textContent = 'main';
@@ -826,6 +856,8 @@ export default class EditorManager {
         this.onChangeCallback(this.getCode());
       },
       theme: this.theme,
+      languageConfig: this.codeMirrorLanguageConfig,
+      completionConfig: this.codeMirrorCompletionConfig,
     };
 
     if (this.editorMode === 'blocks' || this.editorMode === 'both') {
@@ -841,7 +873,8 @@ export default class EditorManager {
           codeContainer: this.codeContainer,
         }
       );
-    } else {
+    }
+    else {
       this._editorInstance = new CodeMirrorInstance(
         this._editorElement ?? this.editorUID,
         activeFile.code,
@@ -912,8 +945,15 @@ export default class EditorManager {
       nextCode = nextCode.slice(normalizedPreCode.length);
     }
 
-    if (normalizedPostCode && nextCode.endsWith(normalizedPostCode)) {
-      nextCode = nextCode.slice(0, -normalizedPostCode.length);
+    if (normalizedPostCode) {
+      const trailingNewline = nextCode.endsWith('\n') ? '\n' : '';
+      const codeWithoutTrailingNewline = trailingNewline
+        ? nextCode.slice(0, -trailingNewline.length)
+        : nextCode;
+
+      if (codeWithoutTrailingNewline.endsWith(normalizedPostCode)) {
+        nextCode = codeWithoutTrailingNewline.slice(0, -normalizedPostCode.length);
+      }
     }
 
     return nextCode;

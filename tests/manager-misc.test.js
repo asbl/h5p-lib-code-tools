@@ -48,6 +48,10 @@ const { BlocklyEditorInstanceMock, blocklyInstances } = vi.hoisted(() => {
   return { BlocklyEditorInstanceMock, blocklyInstances };
 });
 
+const { ensureCodeMirrorRuntimeMock } = vi.hoisted(() => ({
+  ensureCodeMirrorRuntimeMock: vi.fn(async () => ({})),
+}));
+
 vi.mock('../src/scripts/editor/codemirror/codemirror-instance.js', () => ({
   default: CodeMirrorInstanceMock,
 }));
@@ -58,6 +62,10 @@ vi.mock('@scripts/editor/codemirror/codemirror-instance.js', () => ({
 
 vi.mock('../src/scripts/editor/blockly/blockly-editor-instance.js', () => ({
   default: BlocklyEditorInstanceMock,
+}));
+
+vi.mock('../src/scripts/editor/codemirror/codemirror-runtime.js', () => ({
+  ensureCodeMirrorRuntime: ensureCodeMirrorRuntimeMock,
 }));
 
 import CanvasManager from '../src/scripts/manager/canvasmanager.js';
@@ -71,6 +79,7 @@ describe('EditorManager', () => {
     codeMirrorInstances.length = 0;
     BlocklyEditorInstanceMock.mockClear();
     blocklyInstances.length = 0;
+    ensureCodeMirrorRuntimeMock.mockClear();
   });
 
   it('creates a CodeMirror editor and forwards updates to it', async () => {
@@ -92,6 +101,7 @@ describe('EditorManager', () => {
     manager.getDOM();
     await manager.setupEditors();
 
+    expect(ensureCodeMirrorRuntimeMock).toHaveBeenCalledTimes(1);
     expect(CodeMirrorInstanceMock).toHaveBeenCalledTimes(1);
     expect(CodeMirrorInstanceMock.mock.calls[0][3].theme).toBe('dark');
 
@@ -107,10 +117,100 @@ describe('EditorManager', () => {
     manager.restoreDynamicHeight();
     manager.setTheme('light');
 
-    expect(manager._editorInstance.setCode).toHaveBeenCalledWith('before\nprint(2)\nafter');
+    expect(manager._editorInstance.setCode).toHaveBeenCalledWith('print(2)');
     expect(manager._editorInstance.setFixedLines).toHaveBeenCalledWith(20);
     expect(manager._editorInstance.restoreDynamicHeight).toHaveBeenCalled();
     expect(manager._editorInstance.setTheme).toHaveBeenCalledWith('light');
+  });
+
+  it('does not duplicate fixed post code when setting entry code programmatically', () => {
+    const manager = new EditorManager(
+      '',
+      'python',
+      '',
+      'x = input()\nprint(laenge_vorname(x))',
+      true,
+      5,
+      'editor-len',
+      'pre-len',
+      'post-len',
+      vi.fn(),
+      vi.fn(),
+      'light',
+      {
+        enabled: true,
+        entryFileName: 'main.py',
+      },
+    );
+
+    manager._editorInstance = {
+      setCode: vi.fn(),
+    };
+
+    manager.setCode('def laenge_vorname(x):\n    return len(x)\n');
+
+    expect(manager._editorInstance.setCode).toHaveBeenCalledWith(
+      'def laenge_vorname(x):\n    return len(x)\n'
+    );
+    expect(manager.getCode()).toBe(
+      'def laenge_vorname(x):\n    return len(x)\n\nx = input()\nprint(laenge_vorname(x))'
+    );
+  });
+
+  it('does not retain fixed post code when the editor returns a trailing newline', () => {
+    const manager = new EditorManager(
+      '',
+      'python',
+      '',
+      'x = input()\nprint(laenge_vorname(x))',
+      true,
+      5,
+      'editor-len-live',
+      'pre-len-live',
+      'post-len-live',
+      vi.fn(),
+      vi.fn(),
+      'light',
+      {
+        enabled: true,
+        entryFileName: 'main.py',
+      },
+    );
+
+    manager._editorInstance = {
+      getCode: vi.fn(() => '\n\nx = input()\nprint(laenge_vorname(x))\n'),
+    };
+
+    expect(manager.getCode()).toBe('\n\nx = input()\nprint(laenge_vorname(x))');
+    expect(manager.findWorkspaceFile('main.py')?.code).toBe('\n');
+  });
+
+  it('does not retain fixed pre code when the editor returns a trailing newline', () => {
+    const manager = new EditorManager(
+      '',
+      'python',
+      'name = input()\n',
+      '',
+      true,
+      5,
+      'editor-pre-live',
+      'pre-pre-live',
+      'post-pre-live',
+      vi.fn(),
+      vi.fn(),
+      'light',
+      {
+        enabled: true,
+        entryFileName: 'main.py',
+      },
+    );
+
+    manager._editorInstance = {
+      getCode: vi.fn(() => 'name = input()\nprint(len(name))\n'),
+    };
+
+    expect(manager.getCode()).toBe('name = input()\nprint(len(name))\n');
+    expect(manager.findWorkspaceFile('main.py')?.code).toBe('print(len(name))\n');
   });
 
   it('decodes HTML entities and proxies getCode()', async () => {
@@ -567,13 +667,13 @@ describe('CanvasManager', () => {
 });
 
 describe('InstructionsManager', () => {
-  it('renders markdown instructions and optional images', () => {
+  it('renders markdown instructions and optional images', async () => {
     globalThis.H5P.Markdown = class Markdown {
       constructor(text) {
         this.text = text;
       }
 
-      getMarkdownDiv() {
+      async getMarkdownDiv() {
         const div = document.createElement('div');
         div.textContent = this.text;
         return div;
@@ -587,8 +687,12 @@ describe('InstructionsManager', () => {
       { path: 'image.png', copyright: { title: 'Alt text' } },
       {},
       {},
-      {}
+      {},
+      '',
+      ''
     );
+
+    await manager.setupInstructions();
 
     const dom = manager.getDOM();
     const nodes = Array.from(dom.querySelector('.instructions-panel__body').childNodes);
@@ -602,13 +706,13 @@ describe('InstructionsManager', () => {
     expect(manager.getHTMLClasses()).toBe(' has_instructions');
   });
 
-  it('renders markdown-only instructions when no image path is present', () => {
+  it('renders markdown-only instructions when no image path is present', async () => {
     globalThis.H5P.Markdown = class Markdown {
       constructor(text) {
         this.text = text;
       }
 
-      getMarkdownDiv() {
+      async getMarkdownDiv() {
         const div = document.createElement('div');
         div.textContent = this.text;
         return div;
@@ -621,13 +725,49 @@ describe('InstructionsManager', () => {
       { copyright: { title: 'Unused alt text' } },
       {},
       {},
-      {}
+      {},
+      '',
+      ''
     );
+
+    await manager.setupInstructions();
 
     const dom = manager.getDOM();
 
     expect(dom?.querySelector('.instructions-panel__markdown')?.textContent).toBe('Read this');
     expect(dom?.querySelector('.instructions-panel__media')).toBeNull();
+  });
+
+  it('hydrates instructions DOM when setup runs after initial render', async () => {
+    globalThis.H5P.Markdown = class Markdown {
+      constructor(text) {
+        this.text = text;
+      }
+
+      async getMarkdownDiv() {
+        const div = document.createElement('div');
+        div.textContent = this.text;
+        return div;
+      }
+    };
+
+    const manager = new InstructionsManager(
+      7,
+      'Rendered later',
+      null,
+      {},
+      {},
+      {},
+      '',
+      ''
+    );
+
+    const dom = manager.getDOM();
+    expect(dom?.querySelector('.instructions-panel__markdown')?.textContent).toBe('');
+
+    await manager.setupInstructions();
+
+    expect(dom?.querySelector('.instructions-panel__markdown')?.textContent).toBe('Rendered later');
   });
 
   it('returns null when no instructions are available', () => {
