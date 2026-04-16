@@ -94,6 +94,7 @@ export default class CodeContainer {
         downloadFilename: this.options?.downloadFilename,
         projectDownloadFilename: this.options?.projectDownloadFilename,
         projectBundleType: this.options?.projectBundleType,
+        jsZipCdnUrl: this.options?.jsZipCdnUrl || '',
       },
     );
 
@@ -112,7 +113,10 @@ export default class CodeContainer {
       this.l10n,
       undefined,
       false,
-      { showStorageButtons: this.hasStorageButtons() },
+      {
+        showStorageButtons: this.hasStorageButtons(),
+        fontAwesomeCdnUrl: options?.fontAwesomeCdnUrl || '',
+      },
     );
 
     return this._buttonManager;
@@ -129,6 +133,8 @@ export default class CodeContainer {
       this.getPageManager(),
       this.getButtonManager(),
       this.l10n,
+      options?.codeMirrorCdnUrl || '',
+      options?.markdownCdnUrl || '',
     );
     return this.instructionsManager;
   }
@@ -215,6 +221,8 @@ export default class CodeContainer {
           enabled: options?.projectStorageEnabled === true,
           entryFileName: options?.entryFileName || 'main.py',
           allowAddingFiles: options?.allowAddingFiles === true,
+          blocklyCdnUrl: options?.blocklyCdnUrl || '',
+          codeMirrorCdnUrl: options?.codeMirrorCdnUrl || '',
           sourceFiles: Array.isArray(options?.sourceFiles) ? options.sourceFiles : [],
           editorMode: options?.editorMode || 'code',
           blocklyCategories: options?.blocklyCategories ?? null,
@@ -236,6 +244,7 @@ export default class CodeContainer {
         this.l10n,
         options?.consoleType || 'textarea',
         options?.resizeActionHandler,
+        options?.codeMirrorCdnUrl || '',
       );
       this._consoleManager.setTheme(this.getTheme());
     }

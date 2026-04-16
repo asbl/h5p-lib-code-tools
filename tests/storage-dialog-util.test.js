@@ -1,11 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { fire } = vi.hoisted(() => ({
+const { fire, ensureSweetAlertRuntime, ensureJsZipRuntime } = vi.hoisted(() => ({
   fire: vi.fn(),
+  ensureSweetAlertRuntime: vi.fn(),
+  ensureJsZipRuntime: vi.fn(),
 }));
 
-vi.mock('sweetalert2-uncensored', () => ({
-  default: { fire }
+vi.mock('../src/scripts/services/sweetalert-runtime.js', () => ({
+  ensureSweetAlertRuntime,
+  resetSweetAlertRuntime: vi.fn(),
+}));
+
+vi.mock('../src/scripts/services/jszip-runtime.js', () => ({
+  ensureJsZipRuntime,
+  resetJsZipRuntime: vi.fn(),
 }));
 
 import DialogQueue from '../src/scripts/dialog-queue.js';
@@ -26,6 +34,8 @@ async function createProjectZip(entries = {}) {
 describe('DialogQueue', () => {
   beforeEach(() => {
     fire.mockReset();
+    ensureSweetAlertRuntime.mockReset();
+    ensureSweetAlertRuntime.mockResolvedValue({ fire });
   });
 
   it('escapes alert text and runs dialogs sequentially', async () => {
@@ -40,6 +50,7 @@ describe('DialogQueue', () => {
     const first = queue.enqueueAlert('<tag>\n&');
     const second = queue.enqueueInput('Prompt');
 
+    await Promise.resolve();
     await Promise.resolve();
     expect(fire).toHaveBeenCalledTimes(1);
     expect(fire).toHaveBeenNthCalledWith(1, expect.objectContaining({
@@ -83,6 +94,8 @@ describe('StorageManager', () => {
   };
 
   beforeEach(() => {
+    ensureJsZipRuntime.mockReset();
+    ensureJsZipRuntime.mockResolvedValue(JSZip);
     storage = {};
     vi.stubGlobal('localStorage', {
       getItem: vi.fn((key) => storage[key] ?? null),
@@ -165,6 +178,7 @@ describe('StorageManager', () => {
     expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
     expect(click).toHaveBeenCalledTimes(1);
     expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1);
+    expect(ensureJsZipRuntime).not.toHaveBeenCalled();
   });
 
   it('loads code from a selected file', async () => {
@@ -255,6 +269,7 @@ describe('StorageManager', () => {
 
     expect(click).toHaveBeenCalledTimes(1);
     expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+    expect(ensureJsZipRuntime).toHaveBeenCalledTimes(1);
 
     const [blob] = URL.createObjectURL.mock.calls[0];
     const zip = await JSZip.loadAsync(blob);
@@ -308,6 +323,7 @@ describe('StorageManager', () => {
       type: 'h5p-python-question-project',
       version: 1,
     }));
+    expect(ensureJsZipRuntime).toHaveBeenCalledTimes(1);
     expect(codeContainer.applyProjectBundle).toHaveBeenCalledTimes(1);
     expect(codeContainer.applyProjectBundle).toHaveBeenCalledWith(expect.objectContaining({
       entryFileName: 'main.py',

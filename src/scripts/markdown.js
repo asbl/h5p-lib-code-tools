@@ -1,8 +1,8 @@
-import { marked } from 'marked';
-import DOMPurify from 'dompurify';
-import markedAdmonition from 'marked-admonition-extension';
 import 'marked-admonition-extension/dist/index.css';
 import renderReadonlyCodeBlock from './editor/readonly-code-block';
+import { ensureMarkdownRuntime, getMarkdownRuntime } from './services/markdown-runtime';
+
+let markdownConfigured = false;
 
 /**
  * Extracts the language name from a markdown code element.
@@ -24,8 +24,9 @@ function getCodeLanguage(codeElement) {
  * Converts markdown text to html
  */
 export default class Markdown {
-  constructor(text) {
+  constructor(text, options = {}) {
     this.text = text;
+    this.options = options;
     this.text = this.text.replace(/&lt;/g, '<');
     this.text = this.text.replace(/&gt;/g, '>');
     this.text = this.text.replace(/&quot;/g, '"');
@@ -33,29 +34,43 @@ export default class Markdown {
     this.text = this.text.replace(/&amp;/g, '&');
   }
 
-  getHTML() {
-    marked.use(markedAdmonition);
+  async getHTML() {
+    await ensureMarkdownRuntime(this.options?.markdownCdnUrl || '');
+
+    const { marked, DOMPurify, markedAdmonition } = getMarkdownRuntime();
+
+    if (!markdownConfigured) {
+      marked.use(markedAdmonition);
+      markdownConfigured = true;
+    }
+
     return DOMPurify.sanitize(marked.parse(this.text));
   }
 
-  getMarkdownDivAsHtml() {
-    let mDiv = this.getMarkdownDiv();
+  async getMarkdownDivAsHtml() {
+    let mDiv = await this.getMarkdownDiv();
     return '<div>' + mDiv.innerHTML + '</div>';
   }
 
-  getMarkdownDiv() {
+  async getMarkdownDiv() {
     let mdDiv = document.createElement('div');
-    mdDiv.innerHTML = this.getHTML();
-    mdDiv.querySelectorAll('pre code').forEach((el) => {
+    mdDiv.innerHTML = await this.getHTML();
+    const replacements = Array.from(mdDiv.querySelectorAll('pre code')).map(async (el) => {
       const preElement = el.parentElement;
-      const codeBlock = renderReadonlyCodeBlock(
+      const codeBlock = await renderReadonlyCodeBlock(
         el.textContent || '',
         getCodeLanguage(el),
-        { theme: 'light' }
+        {
+          theme: 'light',
+          codeMirrorCdnUrl: this.options?.codeMirrorCdnUrl || '',
+          markdownCdnUrl: this.options?.markdownCdnUrl || '',
+        }
       );
 
       preElement?.replaceWith(codeBlock);
     });
+
+    await Promise.all(replacements);
     return mdDiv;
   }
 }

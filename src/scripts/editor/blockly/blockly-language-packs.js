@@ -1,5 +1,4 @@
-import { pythonGenerator } from 'blockly/python';
-import 'blockly/blocks';
+import { getBlocklyPythonGenerator } from './blockly-runtime.js';
 
 /**
  * Standard Python toolbox – covers enough blocks for introductory tasks.
@@ -212,6 +211,7 @@ export const LANGUAGE_PACKS = {
      * @returns {string} Generated code.
      */
     generate(workspace) {
+      const pythonGenerator = getBlocklyPythonGenerator();
       return pythonGenerator.workspaceToCode(workspace) || '';
     },
     supported: true,
@@ -221,6 +221,7 @@ export const LANGUAGE_PACKS = {
     toolbox: PYTHON_TOOLBOX,
     categoryFieldMap: PYTHON_CATEGORY_FIELDS,
     generate(workspace) {
+      const pythonGenerator = getBlocklyPythonGenerator();
       return pythonGenerator.workspaceToCode(workspace) || '';
     },
     supported: true,

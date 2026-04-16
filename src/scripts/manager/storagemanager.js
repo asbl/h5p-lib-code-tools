@@ -1,4 +1,4 @@
-import JSZip from 'jszip';
+import { ensureJsZipRuntime } from '@services/jszip-runtime';
 
 /**
  * StorageManager
@@ -16,6 +16,7 @@ export default class StorageManager {
    * @param {object} [options] - Optional configuration.
    * @param {string} [options.localStorageKey] - Key for localStorage.
    * @param {string} [options.downloadFilename] - Default filename for download.
+  * @param {string} [options.jsZipCdnUrl] - Optional external JSZip runtime URL.
    */
   constructor(codeContainer, options = {}) {
     this.codeContainer = codeContainer;
@@ -25,6 +26,7 @@ export default class StorageManager {
     this.downloadFilename = options.downloadFilename || 'sketch.py';
     this.projectDownloadFilename = options.projectDownloadFilename || 'python-project.zip';
     this.projectBundleType = options.projectBundleType || 'h5p-python-question-project';
+    this.jsZipCdnUrl = String(options.jsZipCdnUrl || '').trim();
   }
 
   /**
@@ -210,6 +212,7 @@ export default class StorageManager {
    * @returns {Promise<Blob>} ZIP archive blob.
    */
   async createProjectBundleZipBlob(projectBundle) {
+    const JSZip = await ensureJsZipRuntime(this.jsZipCdnUrl);
     const zip = new JSZip();
 
     (Array.isArray(projectBundle?.sourceFiles) ? projectBundle.sourceFiles : []).forEach((file) => {
@@ -360,6 +363,7 @@ export default class StorageManager {
       throw this.createLoadError('load_invalid_project_bundle');
     }
 
+    const JSZip = await ensureJsZipRuntime(this.jsZipCdnUrl);
     const zip = await JSZip.loadAsync(content);
     const sourceFiles = [];
     const images = [];

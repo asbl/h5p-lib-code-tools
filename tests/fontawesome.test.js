@@ -1,51 +1,20 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
-const { add, watch, config } = vi.hoisted(() => ({
-  add: vi.fn(),
-  watch: vi.fn(),
-  config: {}
-}));
-
-vi.mock('@fortawesome/fontawesome-svg-core', () => ({
-  config,
-  dom: { watch },
-  library: { add }
-}));
-
-vi.mock('@fortawesome/fontawesome-svg-core/styles.css', () => ({}));
-
-vi.mock('@fortawesome/free-solid-svg-icons', () => ({
-  faMoon: { iconName: 'moon' },
-  faPlay: { iconName: 'play' },
-  faStop: { iconName: 'stop' },
-  faSun: { iconName: 'sun' },
-  faFloppyDisk: { iconName: 'floppy-disk' },
-  faUpload: { iconName: 'upload' },
-  faMaximize: { iconName: 'maximize' },
-  faDownLeftAndUpRightToCenter: { iconName: 'down-left-and-up-right-to-center' },
-  faNoteSticky: { iconName: 'note-sticky' },
-  faImage: { iconName: 'image' },
-}));
-
-describe('Font Awesome subset bootstrap', () => {
+describe('Font Awesome runtime loader', () => {
   beforeEach(() => {
-    add.mockClear();
-    watch.mockClear();
-    delete config.autoAddCss;
-    vi.resetModules();
+    document.head.innerHTML = '';
   });
 
-  it('registers only the used icons and watches the DOM once', async () => {
-    const { FONT_AWESOME_ICONS, initializeFontAwesome } = await import('../src/scripts/services/fontawesome.js');
+  it('injects one stylesheet link and reuses it on repeated calls', async () => {
+    const { ensureFontAwesomeRuntime, resetFontAwesomeRuntime } = await import('../src/scripts/services/fontawesome-runtime.js');
 
-    expect(FONT_AWESOME_ICONS).toHaveLength(10);
+    resetFontAwesomeRuntime();
+    await ensureFontAwesomeRuntime('https://static.example.com/fontawesome/');
+    await ensureFontAwesomeRuntime('https://static.example.com/fontawesome/');
 
-    initializeFontAwesome();
-    initializeFontAwesome();
+    const links = Array.from(document.head.querySelectorAll('link[data-h5p-fontawesome-runtime="true"]'));
 
-    expect(config.autoAddCss).toBe(false);
-    expect(add).toHaveBeenCalledTimes(1);
-    expect(add).toHaveBeenCalledWith(...FONT_AWESOME_ICONS);
-    expect(watch).toHaveBeenCalledTimes(1);
+    expect(links).toHaveLength(1);
+    expect(links[0].href).toBe('https://static.example.com/fontawesome/css/all.min.css');
   });
 });

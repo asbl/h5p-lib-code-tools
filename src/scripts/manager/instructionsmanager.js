@@ -3,12 +3,14 @@
  */
 export default class InstructionsManager {
   /**
-   * @param {number|string} contentId - H5P content id used to resolve media paths.
-   * @param {string} instructions - Markdown instructions text.
-   * @param {object|null} instructionsImage - Optional H5P image descriptor.
-   * @param {object} pageManager - Reserved for compatibility with existing setup.
-   * @param {object} buttonManager - Reserved for compatibility with existing setup.
-   * @param {object} l10n - Localization object or proxy.
+   * @param {number|string} contentId H5P content id used to resolve media paths.
+   * @param {string} instructions Markdown instructions text.
+   * @param {object|null} instructionsImage Optional H5P image descriptor.
+   * @param {object} pageManager Reserved for compatibility with existing setup.
+   * @param {object} buttonManager Reserved for compatibility with existing setup.
+   * @param {object} l10n Localization object or proxy.
+   * @param {string} codeMirrorCdnUrl Optional external CodeMirror runtime URL.
+   * @param {string} markdownCdnUrl Optional external markdown runtime URL.
    */
   constructor(
     contentId,
@@ -17,6 +19,8 @@ export default class InstructionsManager {
     pageManager,
     buttonManager,
     l10n,
+    codeMirrorCdnUrl = '',
+    markdownCdnUrl = '',
   ) {
     this.instructions = instructions || '';
     this.instructionsImage = instructionsImage || null;
@@ -24,13 +28,32 @@ export default class InstructionsManager {
     this.buttonManager = buttonManager;
     this.contentId = contentId;
     this.l10n = l10n;
+    this.codeMirrorCdnUrl = String(codeMirrorCdnUrl || '').trim();
+    this.markdownCdnUrl = String(markdownCdnUrl || '').trim();
+    this.markdownDiv = null;
+    this.wrapper = null;
+    this.body = null;
+    this.markdownHost = null;
   }
 
   /**
    * Hook kept for compatibility with the manager lifecycle.
    * @returns {Promise<void>} Resolves immediately.
    */
-  async setupInstructions() { }
+  async setupInstructions() {
+    if (!this.hasInstructions()) {
+      this.markdownDiv = null;
+      this.renderMarkdownBlock();
+      return;
+    }
+
+    this.markdownDiv = await new H5P.Markdown(this.instructions, {
+      codeMirrorCdnUrl: this.codeMirrorCdnUrl,
+      markdownCdnUrl: this.markdownCdnUrl,
+    }).getMarkdownDiv();
+    this.markdownDiv.classList.add('instructions-panel__markdown');
+    this.renderMarkdownBlock();
+  }
 
   /**
    * Indicates whether the current content has instructions to render.
@@ -49,12 +72,16 @@ export default class InstructionsManager {
       return null;
     }
 
-    const wrapper = document.createElement('section');
-    wrapper.classList.add('instructions-panel');
+    if (this.wrapper) {
+      return this.wrapper;
+    }
 
-    wrapper.appendChild(this.createPanelBody());
+    this.wrapper = document.createElement('section');
+    this.wrapper.classList.add('instructions-panel');
 
-    return wrapper;
+    this.wrapper.appendChild(this.createPanelBody());
+
+    return this.wrapper;
   }
 
   /**
@@ -62,17 +89,21 @@ export default class InstructionsManager {
    * @returns {HTMLDivElement} Panel body element.
    */
   createPanelBody() {
-    const body = document.createElement('div');
-    body.classList.add('instructions-panel__body');
-
-    body.append(this.createMarkdownBlock());
-
-    if (this.instructionsImage?.path) {
-      body.classList.add('instructions-panel__body--with-media');
-      body.append(this.createMediaFigure());
+    if (this.body) {
+      return this.body;
     }
 
-    return body;
+    this.body = document.createElement('div');
+    this.body.classList.add('instructions-panel__body');
+
+    this.body.append(this.createMarkdownBlock());
+
+    if (this.instructionsImage?.path) {
+      this.body.classList.add('instructions-panel__body--with-media');
+      this.body.append(this.createMediaFigure());
+    }
+
+    return this.body;
   }
 
   /**
@@ -80,10 +111,32 @@ export default class InstructionsManager {
    * @returns {HTMLElement} Rendered markdown wrapper.
    */
   createMarkdownBlock() {
-    const markdownDiv = new H5P.Markdown(this.instructions).getMarkdownDiv();
-    markdownDiv.classList.add('instructions-panel__markdown');
+    if (!this.markdownHost) {
+      this.markdownHost = document.createElement('div');
+      this.markdownHost.classList.add('instructions-panel__markdown');
+    }
 
-    return markdownDiv;
+    this.renderMarkdownBlock();
+
+    return this.markdownHost;
+  }
+
+  /**
+   * Synchronizes the rendered markdown content into the stable host element.
+   * @returns {void}
+   */
+  renderMarkdownBlock() {
+    if (!this.markdownHost) {
+      return;
+    }
+
+    this.markdownHost.replaceChildren();
+
+    if (this.markdownDiv) {
+      this.markdownHost.replaceWith(this.markdownDiv);
+      this.markdownHost = this.markdownDiv;
+      return;
+    }
   }
 
   /**

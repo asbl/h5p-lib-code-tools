@@ -1,4 +1,19 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('../src/scripts/editor/codemirror/codemirror-runtime.js', () => {
+  const runtime = {
+    EditorView: {
+      theme: vi.fn((spec, options) => ({ spec, options })),
+    },
+    syntaxHighlighting: vi.fn((style) => ({ style })),
+    defaultHighlightStyle: { name: 'default-highlight' },
+    oneDark: { name: 'one-dark' },
+  };
+
+  return {
+    getCodeMirrorRuntime: () => runtime,
+  };
+});
 
 import { getCodeMirrorThemeExtensions } from '../src/scripts/editor/codemirror/codemirror-themes.js';
 

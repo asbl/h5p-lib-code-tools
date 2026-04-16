@@ -1,10 +1,5 @@
-import { EditorState } from '@codemirror/state';
-import { EditorView } from '@codemirror/view';
-import { javascript } from '@codemirror/lang-javascript';
-import { markdown } from '@codemirror/lang-markdown';
-import { python } from '@codemirror/lang-python';
-import { sql } from '@codemirror/lang-sql';
 import { getCodeMirrorThemeExtensions } from './codemirror/codemirror-themes.js';
+import { ensureCodeMirrorRuntime, getCodeMirrorRuntime } from './codemirror/codemirror-runtime.js';
 
 /**
  * Gets a CodeMirror language extension for markdown code blocks.
@@ -12,18 +7,20 @@ import { getCodeMirrorThemeExtensions } from './codemirror/codemirror-themes.js'
  * @returns {Array|object} CodeMirror language extension or empty array.
  */
 function getLanguageExtension(language) {
+  const runtime = getCodeMirrorRuntime();
+
   switch ((language || '').toLowerCase()) {
     case 'javascript':
     case 'js':
-      return javascript();
+      return runtime.javascript();
     case 'markdown':
     case 'md':
-      return markdown();
+      return runtime.markdown();
     case 'python':
     case 'py':
-      return python();
+      return runtime.python();
     case 'sql':
-      return sql();
+      return runtime.sql();
     default:
       return [];
   }
@@ -42,11 +39,14 @@ function getThemeExtension(theme) {
  * Renders a markdown code block as a readonly CodeMirror instance.
  * @param {string} code Code block content.
  * @param {string} language Language name from the markdown code block.
- * @param {object} [options={}] Renderer options.
- * @param {string} [options.theme='light'] Theme variant.
- * @returns {HTMLDivElement} Rendered code block container.
+ * @param {object} [options] Renderer options.
+ * @param {string} [options.theme] Theme variant.
+ * @returns {Promise<HTMLDivElement>} Rendered code block container.
  */
-export default function renderReadonlyCodeBlock(code, language, options = {}) {
+export default async function renderReadonlyCodeBlock(code, language, options = {}) {
+  await ensureCodeMirrorRuntime(options?.codeMirrorCdnUrl);
+
+  const { EditorState, EditorView } = getCodeMirrorRuntime();
   const theme = options.theme ?? 'light';
   const container = document.createElement('div');
   container.className = 'h5p-markdown-code-block';

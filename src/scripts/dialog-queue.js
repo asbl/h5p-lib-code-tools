@@ -1,4 +1,4 @@
-import Swal from 'sweetalert2-uncensored';
+import { ensureSweetAlertRuntime } from './services/sweetalert-runtime';
 /**
  * DialogQueue – a reusable, exportable class that guarantees **sequential**
  * display of SweetAlert2 dialogs.
@@ -36,10 +36,11 @@ export default class DialogQueue {
    * @param {number} [cfg.defaultTimeout=0] - Default timeout (ms) applied to
    *   every dialog unless overridden in the call options. `0` means “no timeout”.
    */
-  constructor({ defaultTimeout = 0, target = null } = {}) {
+  constructor({ defaultTimeout = 0, target = null, sweetAlertCdnUrl = '' } = {}) {
     this._tail = Promise.resolve();
     this.defaultTimeout = defaultTimeout;
     this.target = this.resolveTargetElement(target);
+    this.sweetAlertCdnUrl = String(sweetAlertCdnUrl || '').trim();
   }
 
   /**
@@ -113,17 +114,18 @@ export default class DialogQueue {
   _enqueue(swalConfig, _opts = {}) {
     // Append a new step to the queue.
     const next = this._tail.then(
-      () =>
+      async () =>
         new Promise((resolve) => {
-          const swalPromise = Swal.fire(this.getEffectiveSwalConfig(swalConfig));
+          ensureSweetAlertRuntime(this.sweetAlertCdnUrl)
+            .then((Swal) => Swal.fire(this.getEffectiveSwalConfig(swalConfig)))
           // ----- normal completion (user clicks confirm) ---------------------------
-          swalPromise
             .then((result) => {
               resolve(result);
             })
             .catch((err) => {
               // Log the error but keep the queue alive.
               console.error('Swal error:', err);
+              resolve(undefined);
             });
         })
     );

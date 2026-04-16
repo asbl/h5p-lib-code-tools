@@ -1,10 +1,14 @@
-import * as Blockly from 'blockly';
-import { pythonGenerator } from 'blockly/python';
+import {
+  getBlocklyGeneratorOrder,
+  getBlocklyPythonGenerator,
+  getBlocklyRuntime,
+} from '../../blockly-runtime.js';
 
 const SCIPY_CATEGORY_NAME = 'SciPy';
 const SCIPY_CATEGORY_COLOUR = '#7A9CC6';
-const PYTHON_FUNCTION_ORDER =
-  pythonGenerator.ORDER_FUNCTION_CALL ?? pythonGenerator.ORDER_NONE;
+function getPythonFunctionOrder() {
+  return getBlocklyGeneratorOrder('ORDER_FUNCTION_CALL');
+}
 
 /**
  * Adds SciPy-specific Blockly blocks and category definition.
@@ -62,6 +66,9 @@ export default class ScipyPackageManager {
   }
 
   _registerBlocks() {
+    const Blockly = getBlocklyRuntime();
+    const pythonGenerator = getBlocklyPythonGenerator();
+
     if (!Blockly.Blocks.scipy_import_linalg) {
       Blockly.Blocks.scipy_import_linalg = {
         init() {
@@ -95,7 +102,7 @@ export default class ScipyPackageManager {
       pythonGenerator.forBlock.scipy_linalg_solve = (block, generator) => {
         const matrixA = generator.valueToCode(block, 'MATRIX_A', pythonGenerator.ORDER_NONE) || '[]';
         const vectorB = generator.valueToCode(block, 'VECTOR_B', pythonGenerator.ORDER_NONE) || '[]';
-        return [`linalg.solve(${matrixA}, ${vectorB})`, PYTHON_FUNCTION_ORDER];
+        return [`linalg.solve(${matrixA}, ${vectorB})`, getPythonFunctionOrder()];
       };
     }
   }

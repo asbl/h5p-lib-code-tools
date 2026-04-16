@@ -1,4 +1,5 @@
 import CodeMirrorInstance from '@scripts/editor/codemirror/codemirror-instance.js';
+import { ensureCodeMirrorRuntime } from '@scripts/editor/codemirror/codemirror-runtime.js';
 
 /**
  * Manages the console output component.
@@ -6,13 +7,14 @@ import CodeMirrorInstance from '@scripts/editor/codemirror/codemirror-instance.j
 export default class ConsoleManager {
 
   /**
-   * @param {boolean} hasConsole
-   * @param {string} consoleUID
-   * @param {object} l10n
-   * @param {string} consoleType
-   * @param {Function} resizeActionHandler
+   * @param {boolean} hasConsole - Whether the console should be rendered.
+   * @param {string} consoleUID - DOM id for the console element.
+   * @param {object} l10n - Localized UI labels.
+   * @param {string} consoleType - Console renderer identifier.
+   * @param {function} resizeActionHandler - Callback triggered after console size changes.
+   * @param {string} codeMirrorCdnUrl - Optional external CodeMirror runtime URL.
    */
-  constructor(hasConsole, consoleUID, l10n, consoleType = 'codemirror', resizeActionHandler = () => { }) {
+  constructor(hasConsole, consoleUID, l10n, consoleType = 'codemirror', resizeActionHandler = () => { }, codeMirrorCdnUrl = '') {
     this.hasConsole = hasConsole ?? true;
     this.consoleUID = consoleUID;
     this.l10n = l10n || {};
@@ -21,6 +23,7 @@ export default class ConsoleManager {
       ? resizeActionHandler
       : () => { };
     this.theme = 'light';
+    this.codeMirrorCdnUrl = String(codeMirrorCdnUrl || '').trim();
 
     /** @type {CodeMirrorInstance|null} */
     this._consoleInstance = null;
@@ -36,7 +39,7 @@ export default class ConsoleManager {
 
   /**
    * Creates console DOM (same pattern as EditorManager)
-   * @returns {DocumentFragment|null}
+   * @returns {DocumentFragment|null} Console fragment or null when disabled.
    */
   getDOM() {
     if (!this.hasConsole) return null;
@@ -72,6 +75,8 @@ export default class ConsoleManager {
     if (!this.hasConsole) return;
     if (this._consoleInstance) return;
 
+    await ensureCodeMirrorRuntime(this.codeMirrorCdnUrl);
+
     this._consoleInstance = new CodeMirrorInstance(
       this._consoleElement ?? this.consoleUID,
       '',
@@ -88,9 +93,9 @@ export default class ConsoleManager {
   }
 
   /**
-  * Returns the CodeMirror editor DOM
-  * @returns {HTMLElement|null}
-  */
+   * Returns the CodeMirror editor DOM.
+   * @returns {HTMLElement|null} Root DOM element for the console editor.
+   */
   getConsole() {
     if (this._consoleInstance) {
       return this._consoleInstance.editorView.dom;
@@ -99,9 +104,9 @@ export default class ConsoleManager {
   }
 
   /**
-   * Writes text to console
-   * @param {string} text
-   * @param {string} identifier
+   * Writes text to console.
+   * @param {string} text - Console line text.
+   * @param {string} identifier - Optional output source label.
    */
   write(text, identifier = '') {
     if (!this._consoleInstance) return;
@@ -141,15 +146,15 @@ export default class ConsoleManager {
   }
 
   /**
-   * Returns CSS classes
-   * @returns {string}
+   * Returns CSS classes.
+   * @returns {string} Container modifier class.
    */
   getHTMLClasses() {
     return this.hasConsole ? ' has_console' : ' not_has_console';
   }
   /**
-   * Fix console height (fullscreen)
-   * @param {number} lines
+   * Fix console height (fullscreen).
+   * @param {number} lines - Fixed line count to render.
    */
   setFullscreenLines(lines) {
     this._consoleInstance?.setFixedLines(lines);

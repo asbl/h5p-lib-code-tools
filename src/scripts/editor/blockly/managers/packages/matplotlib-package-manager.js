@@ -1,5 +1,7 @@
-import * as Blockly from 'blockly';
-import { pythonGenerator } from 'blockly/python';
+import {
+  getBlocklyPythonGenerator,
+  getBlocklyRuntime,
+} from '../../blockly-runtime.js';
 
 const MATPLOTLIB_CATEGORY_NAME = 'Matplotlib';
 const MATPLOTLIB_CATEGORY_COLOUR = '#2D6A9F';
@@ -90,6 +92,9 @@ export default class MatplotlibPackageManager {
   }
 
   _registerBlocks() {
+    const Blockly = getBlocklyRuntime();
+    const pythonGenerator = getBlocklyPythonGenerator();
+
     if (!Blockly.Blocks.matplotlib_import_pyplot) {
       Blockly.Blocks.matplotlib_import_pyplot = {
         init() {

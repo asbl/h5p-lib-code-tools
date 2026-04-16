@@ -1,13 +1,21 @@
-import * as Blockly from 'blockly';
-import { pythonGenerator } from 'blockly/python';
+import {
+  getBlocklyPythonGenerator,
+  getBlocklyRuntime,
+} from '../../blockly-runtime.js';
 
 const MINIWORLDS_CATEGORY_NAME = 'Miniworlds';
 const MINIWORLDS_WORLD_CATEGORY_NAME = 'World';
 const MINIWORLDS_ACTOR_CATEGORY_NAME = 'Actor';
 const MINIWORLDS_CATEGORY_COLOUR = '#3C8D5A';
-const PYTHON_MEMBER_ORDER = pythonGenerator.ORDER_MEMBER
-  ?? pythonGenerator.ORDER_FUNCTION_CALL
-  ?? pythonGenerator.ORDER_NONE;
+
+function getPythonMemberOrder() {
+  const pythonGenerator = getBlocklyPythonGenerator();
+
+  return pythonGenerator.ORDER_MEMBER
+    ?? pythonGenerator.ORDER_FUNCTION_CALL
+    ?? pythonGenerator.ORDER_NONE
+    ?? 0;
+}
 
 /**
  * Normalizes a value so it can be used as a Python identifier.
@@ -45,6 +53,7 @@ function getEventBody(block, generator) {
  * @returns {string} Generated expression.
  */
 function getInputValue(block, generator, inputName, fallback) {
+  const pythonGenerator = getBlocklyPythonGenerator();
   return generator.valueToCode(block, inputName, pythonGenerator.ORDER_NONE) || fallback;
 }
 
@@ -247,6 +256,9 @@ export default class MiniworldsPackageManager {
    * Registers all Miniworlds blocks and generators.
    */
   _registerBlocks() {
+    const Blockly = getBlocklyRuntime();
+    const pythonGenerator = getBlocklyPythonGenerator();
+
     if (!Blockly.Blocks.miniworlds_import_core) {
       Blockly.Blocks.miniworlds_import_core = {
         init() {
@@ -589,7 +601,7 @@ export default class MiniworldsPackageManager {
       pythonGenerator.forBlock.miniworlds_world_get_attribute = (block) => {
         const worldVar = sanitizePythonIdentifier(block.getFieldValue('WORLD_VAR'), 'world');
         const attributeName = sanitizePythonIdentifier(block.getFieldValue('ATTRIBUTE_NAME'), 'color');
-        return [`${worldVar}.${attributeName}`, PYTHON_MEMBER_ORDER];
+        return [`${worldVar}.${attributeName}`, getPythonMemberOrder()];
       };
     }
 
@@ -641,7 +653,7 @@ export default class MiniworldsPackageManager {
       pythonGenerator.forBlock.miniworlds_actor_get_attribute = (block) => {
         const actorVar = sanitizePythonIdentifier(block.getFieldValue('ACTOR_VAR'), 'player');
         const attributeName = sanitizePythonIdentifier(block.getFieldValue('ATTRIBUTE_NAME'), 'color');
-        return [`${actorVar}.${attributeName}`, PYTHON_MEMBER_ORDER];
+        return [`${actorVar}.${attributeName}`, getPythonMemberOrder()];
       };
     }
 

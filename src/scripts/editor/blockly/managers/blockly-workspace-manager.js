@@ -1,4 +1,4 @@
-import * as Blockly from 'blockly';
+import { getBlocklyRuntime } from '../blockly-runtime.js';
 
 /**
  * Owns Blockly workspace lifecycle and resize behavior.
@@ -35,6 +35,8 @@ export default class BlocklyWorkspaceManager {
     if (!blocklyDiv) {
       return;
     }
+
+    const Blockly = getBlocklyRuntime();
 
     this.blocklyDiv = blocklyDiv;
     this.parentElement = parentElement;
@@ -98,6 +100,7 @@ export default class BlocklyWorkspaceManager {
       return;
     }
 
+    const Blockly = getBlocklyRuntime();
     Blockly.svgResize(this.workspace);
   }
 

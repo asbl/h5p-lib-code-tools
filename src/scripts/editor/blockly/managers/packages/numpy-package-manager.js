@@ -1,10 +1,14 @@
-import * as Blockly from 'blockly';
-import { pythonGenerator } from 'blockly/python';
+import {
+  getBlocklyGeneratorOrder,
+  getBlocklyPythonGenerator,
+  getBlocklyRuntime,
+} from '../../blockly-runtime.js';
 
 const NUMPY_CATEGORY_NAME = 'NumPy';
 const NUMPY_CATEGORY_COLOUR = '#4B8BBE';
-const PYTHON_FUNCTION_ORDER =
-  pythonGenerator.ORDER_FUNCTION_CALL ?? pythonGenerator.ORDER_NONE;
+function getPythonFunctionOrder() {
+  return getBlocklyGeneratorOrder('ORDER_FUNCTION_CALL');
+}
 
 /**
  * Normalizes a value so it can be used as a Python identifier.
@@ -108,6 +112,9 @@ export default class NumpyPackageManager {
   }
 
   _registerBlocks() {
+    const Blockly = getBlocklyRuntime();
+    const pythonGenerator = getBlocklyPythonGenerator();
+
     if (!Blockly.Blocks.numpy_import_as) {
       Blockly.Blocks.numpy_import_as = {
         init() {
@@ -176,7 +183,7 @@ export default class NumpyPackageManager {
     if (!pythonGenerator.forBlock.numpy_array_create) {
       pythonGenerator.forBlock.numpy_array_create = (block, generator) => {
         const values = generator.valueToCode(block, 'VALUES', pythonGenerator.ORDER_NONE) || '[]';
-        return [`np.array(${values})`, PYTHON_FUNCTION_ORDER];
+        return [`np.array(${values})`, getPythonFunctionOrder()];
       };
     }
 
@@ -185,14 +192,14 @@ export default class NumpyPackageManager {
         const start = generator.valueToCode(block, 'START', pythonGenerator.ORDER_NONE) || '0';
         const stop = generator.valueToCode(block, 'STOP', pythonGenerator.ORDER_NONE) || '1';
         const count = generator.valueToCode(block, 'COUNT', pythonGenerator.ORDER_NONE) || '50';
-        return [`np.linspace(${start}, ${stop}, ${count})`, PYTHON_FUNCTION_ORDER];
+        return [`np.linspace(${start}, ${stop}, ${count})`, getPythonFunctionOrder()];
       };
     }
 
     if (!pythonGenerator.forBlock.numpy_mean) {
       pythonGenerator.forBlock.numpy_mean = (block, generator) => {
         const values = generator.valueToCode(block, 'VALUES', pythonGenerator.ORDER_NONE) || '[]';
-        return [`np.mean(${values})`, PYTHON_FUNCTION_ORDER];
+        return [`np.mean(${values})`, getPythonFunctionOrder()];
       };
     }
   }

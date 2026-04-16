@@ -1,47 +1,12 @@
-import { config, dom, library } from '@fortawesome/fontawesome-svg-core';
-import {
-  faDownLeftAndUpRightToCenter,
-  faFloppyDisk,
-  faImage,
-  faMaximize,
-  faMoon,
-  faNoteSticky,
-  faPlay,
-  faStop,
-  faSun,
-  faUpload,
-} from '@fortawesome/free-solid-svg-icons';
-import '@fortawesome/fontawesome-svg-core/styles.css';
-
-export const FONT_AWESOME_ICONS = [
-  faPlay,
-  faStop,
-  faFloppyDisk,
-  faUpload,
-  faMaximize,
-  faDownLeftAndUpRightToCenter,
-  faNoteSticky,
-  faImage,
-  faMoon,
-  faSun,
+export const FONT_AWESOME_ICON_CLASSES = [
+  'fa-play',
+  'fa-stop',
+  'fa-floppy-disk',
+  'fa-upload',
+  'fa-maximize',
+  'fa-down-left-and-up-right-to-center',
+  'fa-note-sticky',
+  'fa-image',
+  'fa-moon',
+  'fa-sun',
 ];
-
-let isInitialized = false;
-
-/**
- * Registers the Font Awesome icons used by the shared UI and enables DOM watching.
- */
-export function initializeFontAwesome() {
-  if (isInitialized) {
-    return;
-  }
-
-  config.autoAddCss = false;
-  library.add(...FONT_AWESOME_ICONS);
-
-  if (typeof document !== 'undefined') {
-    dom.watch();
-  }
-
-  isInitialized = true;
-}

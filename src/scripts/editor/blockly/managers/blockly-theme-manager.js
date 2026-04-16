@@ -1,4 +1,4 @@
-import * as Blockly from 'blockly';
+import { getBlocklyRuntime } from '../blockly-runtime.js';
 
 /**
  * Handles Blockly theme creation and host-container theme classes.
@@ -14,6 +14,8 @@ export default class BlocklyThemeManager {
    * @returns {Blockly.Theme} Blockly theme.
    */
   getWorkspaceTheme(theme) {
+    const Blockly = getBlocklyRuntime();
+
     return theme === 'dark'
       ? this._makeDarkTheme()
       : Blockly.Themes.Zelos;
@@ -37,6 +39,8 @@ export default class BlocklyThemeManager {
    * @returns {Blockly.Theme} Dark Blockly theme.
    */
   _makeDarkTheme() {
+    const Blockly = getBlocklyRuntime();
+
     return Blockly.Theme.defineTheme('dark', {
       base: Blockly.Themes.Zelos,
       componentStyles: {

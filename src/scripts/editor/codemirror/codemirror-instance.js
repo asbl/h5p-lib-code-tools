@@ -1,13 +1,5 @@
-import { Decoration, EditorView, keymap, lineNumbers } from '@codemirror/view';
-import { Compartment, EditorState, Transaction, StateEffect, StateField, RangeSetBuilder } from '@codemirror/state';
-import { defaultKeymap, history } from '@codemirror/commands';
-import { python } from '@codemirror/lang-python';
-import { javascript } from '@codemirror/lang-javascript';
-import { markdown } from '@codemirror/lang-markdown';
-import { sql } from '@codemirror/lang-sql';
-import { bracketMatching } from '@codemirror/language';
-import { closeBrackets, autocompletion } from '@codemirror/autocomplete';
 import { getCodeMirrorThemeExtensions } from './codemirror-themes.js';
+import { getCodeMirrorRuntime } from './codemirror-runtime.js';
 
 /**
  * Wrapper class for a single CodeMirror 6 editor instance
@@ -30,6 +22,8 @@ export default class CodeMirrorInstance {
       onChangeCallback: () => { },
       theme: 'light',
       isConsole: false,
+      languageConfig: null,
+      completionConfig: null,
       preCode: '',
       postCode: '',
       ...options
@@ -38,9 +32,11 @@ export default class CodeMirrorInstance {
     this.isConsole = this.options.isConsole;
     this.editorView = null;
     this._resizeObserver = null;
-    this.themeCompartment = new Compartment();
+    this.themeCompartment = new (getCodeMirrorRuntime().Compartment)();
+    this.languageCompartment = new (getCodeMirrorRuntime().Compartment)();
+    this.completionCompartment = new (getCodeMirrorRuntime().Compartment)();
     this.inlineDiagnostics = [];
-    this.setInlineDiagnosticsEffect = StateEffect.define();
+    this.setInlineDiagnosticsEffect = getCodeMirrorRuntime().StateEffect.define();
 
     // Normalize preCode, mainCode (content), postCode with newlines
     this.preCode = this.options.preCode === '' || this.options.preCode.endsWith('\n')
@@ -63,17 +59,30 @@ export default class CodeMirrorInstance {
 
   /** --- Language / Theme --- */
   getLanguageExtension() {
+    const runtime = getCodeMirrorRuntime();
+
     switch (this.codingLanguage) {
-      case 'python': return python();
-      case 'javascript': return javascript();
-      case 'markdown': return markdown();
-      case 'sql': return sql();
+      case 'python': return runtime.python();
+      case 'javascript': return runtime.javascript();
+      case 'markdown': return runtime.markdown();
+      case 'sql': {
+        const languageConfig = {
+          dialect: runtime.SQLite,
+          ...(this.options.languageConfig || {}),
+        };
+
+        return runtime.sql(languageConfig);
+      }
       default: return [];
     }
   }
 
   getThemeExtension() {
     return getCodeMirrorThemeExtensions(this.options.theme);
+  }
+
+  getCompletionExtension() {
+    return getCodeMirrorRuntime().autocompletion(this.options.completionConfig || {});
   }
 
   getInitialLineCount() {
@@ -85,6 +94,18 @@ export default class CodeMirrorInstance {
 
   /** --- Editor creation --- */
   createEditor() {
+    const runtime = getCodeMirrorRuntime();
+    const {
+      EditorView,
+      EditorState,
+      lineNumbers,
+      bracketMatching,
+      closeBrackets,
+      history,
+      keymap,
+      defaultKeymap,
+    } = runtime;
+
     const parent = this.getParentElement();
     if (!parent) throw new Error(`Element #${this.uid} not found`);
 
@@ -97,10 +118,10 @@ export default class CodeMirrorInstance {
         bracketMatching(),
         closeBrackets(),
         history(),
-        !this.isConsole ? this.getLanguageExtension() : [],
+        this.languageCompartment.of(!this.isConsole ? this.getLanguageExtension() : []),
         this.themeCompartment.of(this.getThemeExtension()),
+        this.completionCompartment.of(this.getCompletionExtension()),
         keymap.of(defaultKeymap),
-        autocompletion(),
         EditorView.updateListener.of((update) => {
           if (update.docChanged && !this.isConsole) this.handleChange();
         }),
@@ -135,7 +156,7 @@ export default class CodeMirrorInstance {
   }
 
   smartDelete() {
-    return EditorState.transactionFilter.of((tr) => {
+    return getCodeMirrorRuntime().EditorState.transactionFilter.of((tr) => {
       if (!tr.isUserEvent('delete.selection')) return tr;
       const ranges = tr.startState.selection.ranges;
       const readOnlyRanges = this.getReadOnlyRanges(tr.startState);
@@ -152,7 +173,7 @@ export default class CodeMirrorInstance {
   }
 
   preventModifyTargetRanges() {
-    return EditorState.changeFilter.of((tr) => {
+    return getCodeMirrorRuntime().EditorState.changeFilter.of((tr) => {
       const rangesBefore = this.getReadOnlyRanges(tr.startState);
       const rangesAfter = this.getReadOnlyRanges(tr.state);
 
@@ -179,6 +200,8 @@ export default class CodeMirrorInstance {
   }
 
   smartPaste() {
+    const { EditorView, Transaction } = getCodeMirrorRuntime();
+
     return EditorView.domEventHandlers({
       paste: (event, view) => {
         const clipboardData = event.clipboardData || window.clipboardData;
@@ -226,6 +249,7 @@ export default class CodeMirrorInstance {
 
   scrollToBottom() {
     if (!this.editorView) return;
+    const { EditorView } = getCodeMirrorRuntime();
     this.editorView.dispatch({
       effects: EditorView.scrollIntoView(this.editorView.state.doc.length)
     });
@@ -320,6 +344,34 @@ export default class CodeMirrorInstance {
     });
   }
 
+  setLanguageConfig(languageConfig = null) {
+    this.options.languageConfig = languageConfig && typeof languageConfig === 'object'
+      ? languageConfig
+      : null;
+
+    if (!this.editorView || this.isConsole) {
+      return;
+    }
+
+    this.editorView.dispatch({
+      effects: this.languageCompartment.reconfigure(this.getLanguageExtension())
+    });
+  }
+
+  setCompletionConfig(completionConfig = null) {
+    this.options.completionConfig = completionConfig && typeof completionConfig === 'object'
+      ? completionConfig
+      : null;
+
+    if (!this.editorView || this.isConsole) {
+      return;
+    }
+
+    this.editorView.dispatch({
+      effects: this.completionCompartment.reconfigure(this.getCompletionExtension())
+    });
+  }
+
   focus() {
     this.editorView?.focus();
   }
@@ -387,6 +439,7 @@ export default class CodeMirrorInstance {
   }
 
   createReadonlyDecorations() {
+    const { Decoration, StateField, EditorView } = getCodeMirrorRuntime();
     const readonlyMark = Decoration.mark({
       class: 'cm-readonly-range'
     });
@@ -404,6 +457,8 @@ export default class CodeMirrorInstance {
   }
 
   createInlineDiagnosticsDecorations() {
+    const { StateField, EditorView } = getCodeMirrorRuntime();
+
     return StateField.define({
       create: () => this.buildInlineDiagnosticsDecorations(this.inlineDiagnostics),
 
@@ -425,6 +480,7 @@ export default class CodeMirrorInstance {
   }
 
   createConsoleErrorLineDecorations() {
+    const { Decoration, StateField, EditorView } = getCodeMirrorRuntime();
     const errorLineDecoration = Decoration.line({ class: 'cm-console-error-line' });
 
     return StateField.define({
@@ -445,7 +501,7 @@ export default class CodeMirrorInstance {
   }
 
   buildConsoleErrorLineDecorations(state, lineDecoration) {
-    const builder = new RangeSetBuilder();
+    const builder = new (getCodeMirrorRuntime().RangeSetBuilder)();
 
     for (let lineNumber = 1; lineNumber <= state.doc.lines; lineNumber += 1) {
       const line = state.doc.line(lineNumber);
@@ -459,7 +515,7 @@ export default class CodeMirrorInstance {
   }
 
   buildReadonlyDecorations(state, mark) {
-    const builder = new RangeSetBuilder();
+    const builder = new (getCodeMirrorRuntime().RangeSetBuilder)();
 
     const docLength = state.doc.length;
 
@@ -478,6 +534,7 @@ export default class CodeMirrorInstance {
   }
 
   buildInlineDiagnosticsDecorations(diagnostics = []) {
+    const { RangeSetBuilder, Decoration } = getCodeMirrorRuntime();
     const builder = new RangeSetBuilder();
 
     diagnostics.forEach((diagnostic) => {

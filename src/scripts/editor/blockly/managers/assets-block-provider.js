@@ -1,5 +1,7 @@
-import * as Blockly from 'blockly';
-import { pythonGenerator } from 'blockly/python';
+import {
+  getBlocklyPythonGenerator,
+  getBlocklyRuntime,
+} from '../blockly-runtime.js';
 
 /**
  * Dynamically creates and registers Blockly blocks for uploaded images and sounds.
@@ -23,6 +25,8 @@ export default class AssetsBlockProvider {
    * @returns {void}
    */
   registerImageDropdownBlock() {
+    const Blockly = getBlocklyRuntime();
+    const pythonGenerator = getBlocklyPythonGenerator();
     const blockType = 'assets_image_dropdown';
 
     if (this.registeredBlocks.has(blockType)) {
@@ -60,6 +64,8 @@ export default class AssetsBlockProvider {
    * @returns {void}
    */
   registerSoundDropdownBlock() {
+    const Blockly = getBlocklyRuntime();
+    const pythonGenerator = getBlocklyPythonGenerator();
     const blockType = 'assets_sound_dropdown';
 
     if (this.registeredBlocks.has(blockType)) {

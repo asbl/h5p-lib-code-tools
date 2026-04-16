@@ -1,17 +1,111 @@
 import { describe, expect, it, vi } from 'vitest';
 
+vi.mock('../src/scripts/editor/codemirror/codemirror-runtime.js', () => ({
+  getCodeMirrorRuntime: () => ({
+    Compartment: class Compartment {
+      reconfigure(value) {
+        return value;
+      }
+    },
+    StateEffect: { define: () => ({ of: (value) => value }) },
+    python: () => ({ language: 'python' }),
+    javascript: () => ({ language: 'javascript' }),
+    markdown: () => ({ language: 'markdown' }),
+    SQLite: { name: 'sqlite' },
+    sql: (config) => ({ language: 'sql', config }),
+    RangeSetBuilder: class RangeSetBuilder {
+      constructor() {
+        this.entries = [];
+      }
+
+      add(from, to, value) {
+        this.entries.push({ from, to, value });
+      }
+
+      finish() {
+        return this.entries;
+      }
+    },
+    Decoration: {
+      mark: (config) => ({ type: 'mark', config }),
+      line: (config) => ({ type: 'line', config }),
+    },
+    StateField: { define: (config) => config },
+    EditorView: {
+      decorations: { from: (value) => value },
+      scrollIntoView: (value) => value,
+      domEventHandlers: (handlers) => handlers,
+    },
+    EditorState: {
+      transactionFilter: { of: (value) => value },
+      changeFilter: { of: (value) => value },
+    },
+    Transaction: { userEvent: { of: (value) => value } },
+  }),
+}));
+
 import CodeMirrorInstance from '../src/scripts/editor/codemirror/codemirror-instance.js';
 
 describe('CodeMirrorInstance', () => {
   it('returns language extensions for supported languages', () => {
     const pythonInstance = Object.create(CodeMirrorInstance.prototype);
     pythonInstance.codingLanguage = 'python';
+    pythonInstance.options = {};
 
     const unknownInstance = Object.create(CodeMirrorInstance.prototype);
     unknownInstance.codingLanguage = 'text';
+    unknownInstance.options = {};
+
+    const sqlInstance = Object.create(CodeMirrorInstance.prototype);
+    sqlInstance.codingLanguage = 'sql';
+    sqlInstance.options = {
+      languageConfig: {
+        schema: { world: ['name'] },
+        upperCaseKeywords: true,
+      },
+    };
 
     expect(pythonInstance.getLanguageExtension()).toBeTruthy();
+    expect(sqlInstance.getLanguageExtension()).toEqual({
+      language: 'sql',
+      config: {
+        dialect: { name: 'sqlite' },
+        schema: { world: ['name'] },
+        upperCaseKeywords: true,
+      },
+    });
     expect(unknownInstance.getLanguageExtension()).toEqual([]);
+  });
+
+  it('reconfigures the language compartment when SQL config changes', () => {
+    const effect = Symbol('language-effect');
+    const instance = Object.create(CodeMirrorInstance.prototype);
+    instance.options = { languageConfig: null };
+    instance.isConsole = false;
+    instance.languageCompartment = { reconfigure: vi.fn(() => effect) };
+    instance.getLanguageExtension = vi.fn(() => 'sql-extension');
+    instance.editorView = { dispatch: vi.fn() };
+
+    instance.setLanguageConfig({ schema: { world: ['name'] } });
+
+    expect(instance.options.languageConfig).toEqual({ schema: { world: ['name'] } });
+    expect(instance.languageCompartment.reconfigure).toHaveBeenCalledWith('sql-extension');
+    expect(instance.editorView.dispatch).toHaveBeenCalledWith({ effects: effect });
+  });
+
+  it('reconfigures the completion compartment when completion config changes', () => {
+    const effect = Symbol('completion-effect');
+    const instance = Object.create(CodeMirrorInstance.prototype);
+    instance.options = { completionConfig: null };
+    instance.isConsole = false;
+    instance.completionCompartment = { reconfigure: vi.fn(() => effect) };
+    instance.getCompletionExtension = vi.fn(() => 'completion-extension');
+    instance.editorView = { dispatch: vi.fn() };
+
+    instance.setCompletionConfig({ override: [() => null] });
+
+    expect(instance.completionCompartment.reconfigure).toHaveBeenCalledWith('completion-extension');
+    expect(instance.editorView.dispatch).toHaveBeenCalledWith({ effects: effect });
   });
 
   it('reconfigures the theme compartment when setTheme is called', () => {

@@ -1,3 +1,5 @@
+import { ensureFontAwesomeRuntime } from '../services/fontawesome-runtime.js';
+
 /**
  * @typedef {object} ButtonManagerOptions
  * @property {boolean} [showStorageButtons] - Whether default save/load buttons should be created.
@@ -103,6 +105,7 @@ export default class ButtonManager {
    */
   async setupButtons() {
     if (!this.hasButtons) return;
+    await ensureFontAwesomeRuntime(this.options?.fontAwesomeCdnUrl);
     this.addButtons(this.defaultButtons);
   }
 
