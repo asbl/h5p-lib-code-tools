@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   CodeQuestionConfigNormalizer,
@@ -10,6 +10,9 @@ import {
   MarkdownRuntimeLoader,
 } from '../src/scripts/services/markdown-runtime.js';
 import {
+  P5RuntimeLoader,
+} from '../src/scripts/services/p5-runtime-service.js';
+import {
   SweetAlertRuntimeLoader,
 } from '../src/scripts/services/sweetalert-runtime.js';
 import {
@@ -17,6 +20,12 @@ import {
 } from '../src/scripts/runtime/runtime-result.js';
 
 describe('runtime and config service classes', () => {
+  beforeEach(() => {
+    delete window.H5PIntegration;
+    delete window.p5;
+    document.head.innerHTML = '';
+  });
+
   it('normalizes shared CodeQuestion config through isolated instances', () => {
     const normalizer = new CodeQuestionConfigNormalizer({
       keyMap: {
@@ -169,5 +178,21 @@ describe('runtime and config service classes', () => {
     script.onload();
 
     await expect(promise).resolves.toBe(window.Swal);
+  });
+
+  it('applies the host CSP nonce when injecting the p5 runtime script', async () => {
+    window.H5PIntegration = { nonce: 'p5-nonce' };
+
+    const loader = new P5RuntimeLoader({ state: { loadPromise: null } });
+    const promise = loader.ensure('https://cdn.example.test/p5.min.js');
+    const script = document.querySelector('script[data-h5p-p5-runtime="true"]');
+
+    expect(script?.src).toBe('https://cdn.example.test/p5.min.js');
+    expect(script?.getAttribute('nonce')).toBe('p5-nonce');
+
+    window.p5 = class P5Mock {};
+    script.onload();
+
+    await expect(promise).resolves.toBe(window.p5);
   });
 });

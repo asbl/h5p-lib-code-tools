@@ -1,3 +1,5 @@
+import { applyCspNonce } from './csp';
+
 const DEFAULT_P5_CDN_URL = 'https://cdn.jsdelivr.net/npm/p5@1.1.9/lib/p5.min.js';
 
 const sharedP5RuntimeState = {
@@ -68,6 +70,7 @@ export class P5RuntimeLoader {
       script.src = url;
       script.async = true;
       script.dataset.h5pP5Runtime = 'true';
+      applyCspNonce(script);
       script.onload = () => {
         if (window.p5) {
           resolve(window.p5);
@@ -95,4 +98,3 @@ export function resetSharedP5RuntimeState() {
 export function ensureP5Script(url = DEFAULT_P5_CDN_URL) {
   return sharedP5RuntimeLoader.ensure(url);
 }
-
