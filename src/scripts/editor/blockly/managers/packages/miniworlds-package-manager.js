@@ -105,6 +105,7 @@ export default class MiniworldsPackageManager {
         colour: MINIWORLDS_CATEGORY_COLOUR,
         contents: [
           { kind: 'block', type: 'miniworlds_import_core' },
+          { kind: 'block', type: 'miniworlds_rgb_color' },
         ],
       },
       {
@@ -267,6 +268,21 @@ export default class MiniworldsPackageManager {
           this.setNextStatement(true, null);
           this.setColour(MINIWORLDS_CATEGORY_COLOUR);
           this.setTooltip('Importiert die wichtigsten Miniworlds-Klassen.');
+        },
+      };
+    }
+
+    if (!Blockly.Blocks.miniworlds_rgb_color) {
+      Blockly.Blocks.miniworlds_rgb_color = {
+        init() {
+          this.appendDummyInput()
+            .appendField('RGB')
+            .appendField(new Blockly.FieldNumber(255, 0, 255, 1), 'R')
+            .appendField(new Blockly.FieldNumber(0, 0, 255, 1), 'G')
+            .appendField(new Blockly.FieldNumber(0, 0, 255, 1), 'B');
+          this.setOutput(true, null);
+          this.setColour(MINIWORLDS_CATEGORY_COLOUR);
+          this.setTooltip('Erzeugt eine Miniworlds-Farbe als Python-Tupel.');
         },
       };
     }
@@ -569,6 +585,15 @@ export default class MiniworldsPackageManager {
 
     if (!pythonGenerator.forBlock.miniworlds_import_core) {
       pythonGenerator.forBlock.miniworlds_import_core = () => 'from miniworlds import World, Actor\n';
+    }
+
+    if (!pythonGenerator.forBlock.miniworlds_rgb_color) {
+      pythonGenerator.forBlock.miniworlds_rgb_color = (block) => {
+        const r = Number(block.getFieldValue('R') || 0);
+        const g = Number(block.getFieldValue('G') || 0);
+        const b = Number(block.getFieldValue('B') || 0);
+        return [`(${r}, ${g}, ${b})`, pythonGenerator.ORDER_ATOMIC];
+      };
     }
 
     if (!pythonGenerator.forBlock.miniworlds_create_world) {

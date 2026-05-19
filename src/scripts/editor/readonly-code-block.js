@@ -19,6 +19,8 @@ function getLanguageExtension(language) {
     case 'python':
     case 'py':
       return runtime.python();
+    case 'java':
+      return runtime.java();
     case 'sql':
       return runtime.sql();
     default:

@@ -495,7 +495,8 @@
 }
 
 .code_container .console-body:focus-visible {
-  outline: none;
+    outline: 2px solid #1a73e8;
+    outline-offset: 2px;
 }
 
 /* Show canvas display - Show canvas, hide editor*/
@@ -553,8 +554,16 @@
   margin-top: 10px;
 }
 
-.code_container .page-canvas canvas:last-child {
+/* White background lives on the container so that transparent Skulpt canvas
+ * layers (sprite layer, per-turtle paper layers) all see the same white base.
+ * Putting it on canvas:last-child broke multi-turtle code: Skulpt stacks one
+ * canvas per turtle via margin-top:-height, and a white last-child covered
+ * every preceding turtle's drawing. */
+.code_container .page-canvas .canvas-content {
   background-color: white;
+}
+
+.code_container .page-canvas canvas:last-child {
   border: 1px solid #222;
   box-shadow: 1px 1px 1px 1px rgba(100, 100, 100, 0.2);
 }

@@ -6,6 +6,7 @@ export default class BlocklyLayoutManager {
     this.parentElement = parentElement;
     this.blocklyDiv = null;
     this.codePreviewEl = null;
+    this.idPrefix = `blockly-${Math.random().toString(36).slice(2)}`;
   }
 
   /**
@@ -83,6 +84,7 @@ export default class BlocklyLayoutManager {
 
     const msg = document.createElement('div');
     msg.className = 'blockly-unsupported-msg';
+    msg.setAttribute('role', 'status');
     msg.textContent =
       `Blockly-Blöcke sind für die Sprache "${codingLanguage}" noch nicht verfügbar. ` +
       'Bitte wechsle in den Code-Modus.';
@@ -124,12 +126,14 @@ export default class BlocklyLayoutManager {
     blocksBtn.className = 'blockly-toggle-btn is-active';
     blocksBtn.textContent = 'Blöcke';
     blocksBtn.dataset.panel = 'blocks';
+    blocksBtn.setAttribute('aria-pressed', 'true');
 
     const codeBtn = document.createElement('button');
     codeBtn.type = 'button';
     codeBtn.className = 'blockly-toggle-btn';
     codeBtn.textContent = 'Code';
     codeBtn.dataset.panel = 'code';
+    codeBtn.setAttribute('aria-pressed', 'false');
 
     bar.appendChild(blocksBtn);
     bar.appendChild(codeBtn);
@@ -137,13 +141,20 @@ export default class BlocklyLayoutManager {
 
     const blocklyDiv = document.createElement('div');
     blocklyDiv.className = 'blockly-workspace blockly-workspace--both';
+    blocklyDiv.id = `${this.idPrefix}-blocks-panel`;
+    blocklyDiv.setAttribute('role', 'region');
+    blocklyDiv.setAttribute('aria-label', 'Blockly-Arbeitsbereich');
     this.parentElement.appendChild(blocklyDiv);
 
     const preview = document.createElement('pre');
     preview.className = 'blockly-code-preview';
+    preview.id = `${this.idPrefix}-code-panel`;
     preview.hidden = true;
     preview.setAttribute('aria-label', 'Generierter Code (nur lesen)');
     this.parentElement.appendChild(preview);
+
+    blocksBtn.setAttribute('aria-controls', blocklyDiv.id);
+    codeBtn.setAttribute('aria-controls', preview.id);
 
     [blocksBtn, codeBtn].forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -152,6 +163,8 @@ export default class BlocklyLayoutManager {
 
         blocksBtn.classList.toggle('is-active', showBlocks);
         codeBtn.classList.toggle('is-active', !showBlocks);
+        blocksBtn.setAttribute('aria-pressed', String(showBlocks));
+        codeBtn.setAttribute('aria-pressed', String(!showBlocks));
 
         blocklyDiv.hidden = !showBlocks;
         preview.hidden = showBlocks;

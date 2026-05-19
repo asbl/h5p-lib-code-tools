@@ -11,6 +11,8 @@ export default class BlocklyWorkspaceManager {
       readonly: false,
       blocklyCategories: null,
       blocklyPackages: [],
+      blocklyWorkspaceState: null,
+      blocklyContext: {},
       onCodeChange: () => { },
       resizeActionHandler: () => { },
       ...options,
@@ -37,11 +39,15 @@ export default class BlocklyWorkspaceManager {
     }
 
     const Blockly = getBlocklyRuntime();
+    this.languageManager.registerBlocks(Blockly);
 
     this.blocklyDiv = blocklyDiv;
     this.parentElement = parentElement;
 
-    const toolbox = this.languageManager.buildToolbox(this.options.blocklyCategories);
+    const toolbox = this.languageManager.buildToolbox(
+      this.options.blocklyCategories,
+      this.options.blocklyContext,
+    );
 
     this.workspace = Blockly.inject(this.blocklyDiv, {
       toolbox,
@@ -62,6 +68,8 @@ export default class BlocklyWorkspaceManager {
       },
       trashcan: true,
     });
+
+    this._loadInitialWorkspaceState(Blockly);
 
     this.workspace.addChangeListener((event) => {
       if (event.isUiEvent) {
@@ -155,5 +163,21 @@ export default class BlocklyWorkspaceManager {
       this.options.resizeActionHandler();
     });
     this.resizeObserver.observe(this.parentElement);
+  }
+
+  _loadInitialWorkspaceState(Blockly) {
+    const rawState = this.options.blocklyWorkspaceState;
+    if (!rawState) {
+      return;
+    }
+
+    try {
+      const state = typeof rawState === 'string' ? JSON.parse(rawState) : rawState;
+      Blockly.serialization?.workspaces?.load?.(state, this.workspace);
+      this.options.onCodeChange(this.getCode());
+    }
+    catch {
+      // Ignore malformed author-provided starter blocks and leave an empty workspace.
+    }
   }
 }

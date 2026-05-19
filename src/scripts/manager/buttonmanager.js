@@ -190,12 +190,14 @@ export default class ButtonManager {
   createIconElement(iconClass, hasLabel = false) {
     const iconWrapper = document.createElement('span');
     iconWrapper.className = 'button-icon';
+    iconWrapper.setAttribute('aria-hidden', 'true');
 
     if (hasLabel) {
       iconWrapper.style.marginRight = '0.5em';
     }
 
     const iconElement = document.createElement('i');
+    iconElement.setAttribute('aria-hidden', 'true');
     iconClass.split(' ').forEach((cls) => iconElement.classList.add(cls));
     iconWrapper.appendChild(iconElement);
 

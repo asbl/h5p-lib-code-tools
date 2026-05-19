@@ -42,6 +42,10 @@ export default class CanvasManager {
    * @param {string|number} [identifier] - Canvas identifier (optional, for compatibility)
    */
   addCanvas(canvasWrapper, type, identifier) {
+    if (this.canvasWrapper && this.canvasWrapper !== canvasWrapper) {
+      this.canvasWrapper.remove();
+    }
+
     this.hasCanvas = true;
     this.canvasWrapper = canvasWrapper;
     this.canvasDiv = canvasWrapper.querySelector('.canvas-content, .turtle-content, .p5-content');

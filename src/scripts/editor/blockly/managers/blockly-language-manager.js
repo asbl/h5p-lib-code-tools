@@ -1,18 +1,8 @@
 import { getLanguagePack } from '../blockly-language-packs.js';
-import MatplotlibPackageManager from './packages/matplotlib-package-manager.js';
-import MiniworldsPackageManager from './packages/miniworlds-package-manager.js';
-import NumpyPackageManager from './packages/numpy-package-manager.js';
-import ScipyPackageManager from './packages/scipy-package-manager.js';
+import { getRegisteredBlocklyPackageManagers } from '../blockly-package-managers.js';
 import AssetsBlockProvider from './assets-block-provider.js';
 
 const PACKAGE_LANGUAGES = new Set(['python', 'pseudocode']);
-
-const DEFAULT_PACKAGE_MANAGERS = [
-  new NumpyPackageManager(),
-  new MatplotlibPackageManager(),
-  new MiniworldsPackageManager(),
-  new ScipyPackageManager(),
-];
 
 /**
  * Builds a (potentially filtered) toolbox based on a category selection map.
@@ -64,7 +54,7 @@ export function buildPackageToolbox(
   toolbox,
   codingLanguage,
   packageNames = [],
-  packageManagers = DEFAULT_PACKAGE_MANAGERS,
+  packageManagers = getRegisteredBlocklyPackageManagers(),
 ) {
   const normalizedLanguage = String(codingLanguage || '').toLowerCase();
   if (!PACKAGE_LANGUAGES.has(normalizedLanguage)) {
@@ -119,13 +109,22 @@ export default class BlocklyLanguageManager {
    * @param {Array<object>} packageManagers Package manager instances.
    * @param {object|null} codeContainer CodeContainer for asset access.
    */
-  constructor(codingLanguage, packageNames = [], packageManagers = DEFAULT_PACKAGE_MANAGERS, codeContainer = null) {
+  constructor(codingLanguage, packageNames = [], packageManagers = getRegisteredBlocklyPackageManagers(), codeContainer = null) {
     this.codingLanguage = codingLanguage;
     this.packageNames = Array.isArray(packageNames) ? packageNames : [];
-    this.packageManagers = Array.isArray(packageManagers) ? packageManagers : DEFAULT_PACKAGE_MANAGERS;
+    this.packageManagers = Array.isArray(packageManagers) ? packageManagers : getRegisteredBlocklyPackageManagers();
     this.codeContainer = codeContainer;
     this.languagePack = getLanguagePack(codingLanguage);
     this.assetsBlockProvider = codeContainer ? new AssetsBlockProvider(codeContainer) : null;
+  }
+
+  /**
+   * Registers language-specific custom Blockly blocks.
+   * @param {object} Blockly Loaded Blockly runtime.
+   * @returns {void}
+   */
+  registerBlocks(Blockly) {
+    this.languagePack.registerBlocks?.(Blockly);
   }
 
   /**
@@ -142,7 +141,7 @@ export default class BlocklyLanguageManager {
    * @param {Record<string, boolean>|null|undefined} categorySelection Category selection map.
    * @returns {object} Filtered toolbox.
    */
-  buildToolbox(categorySelection) {
+  buildToolbox(categorySelection, context = {}) {
     const packageToolbox = buildPackageToolbox(
       this.languagePack.toolbox,
       this.codingLanguage,
@@ -165,8 +164,19 @@ export default class BlocklyLanguageManager {
       }
     }
 
+    const dynamicCategories = this.languagePack.buildDynamicCategories?.(context) || [];
+    const toolboxWithDynamicCategories = dynamicCategories.length > 0
+      ? {
+        ...toolboxWithAssets,
+        contents: [
+          ...toolboxWithAssets.contents,
+          ...dynamicCategories,
+        ],
+      }
+      : toolboxWithAssets;
+
     return buildFilteredToolbox(
-      toolboxWithAssets,
+      toolboxWithDynamicCategories,
       categorySelection,
       this.languagePack.categoryFieldMap ?? {},
     );

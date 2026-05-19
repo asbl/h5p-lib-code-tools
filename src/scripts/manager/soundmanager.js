@@ -71,6 +71,7 @@ export default class SoundManager extends FileManager {
     audio.controls = true;
     audio.preload = 'metadata';
     audio.src = sound.objectUrl;
+    audio.setAttribute('aria-label', sound.name);
     audio.addEventListener('loadedmetadata', () => this.resizeActionHandler(), { once: true });
     wrapper.appendChild(audio);
 

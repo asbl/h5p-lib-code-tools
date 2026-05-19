@@ -1,3 +1,5 @@
+import { applyCspNonce } from '../../services/csp';
+
 const DEFAULT_BLOCKLY_CDN_URL = 'https://cdn.jsdelivr.net/npm/blockly@12.4.1/';
 
 const sharedBlocklyRuntimeState = {
@@ -51,6 +53,7 @@ function loadExternalScript(url, marker) {
     script.src = url;
     script.async = true;
     script.dataset.h5pBlocklyRuntime = marker;
+    applyCspNonce(script);
     script.onload = () => resolve();
     script.onerror = () => reject(new Error(`Failed to load Blockly runtime script: ${url}`));
     document.head.appendChild(script);
@@ -76,8 +79,14 @@ export async function ensureBlocklyRuntime(url) {
 
   sharedBlocklyRuntimeState.loadPromise = (async () => {
     await loadExternalScript(runtimeUrls.coreUrl, 'core');
-    await loadExternalScript(runtimeUrls.blocksUrl, 'blocks');
-    await loadExternalScript(runtimeUrls.pythonUrl, 'python');
+
+    if (!window?.Blockly?.Blocks || Object.keys(window.Blockly.Blocks).length === 0) {
+      await loadExternalScript(runtimeUrls.blocksUrl, 'blocks');
+    }
+
+    if (!window?.Blockly?.Python) {
+      await loadExternalScript(runtimeUrls.pythonUrl, 'python');
+    }
 
     if (!window?.Blockly?.Python) {
       throw new Error('Blockly runtime loaded, but Blockly.Python is unavailable.');

@@ -63,6 +63,7 @@ export default class CodeMirrorInstance {
 
     switch (this.codingLanguage) {
       case 'python': return runtime.python();
+      case 'java': return runtime.java();
       case 'javascript': return runtime.javascript();
       case 'markdown': return runtime.markdown();
       case 'sql': {
@@ -102,6 +103,8 @@ export default class CodeMirrorInstance {
       bracketMatching,
       closeBrackets,
       history,
+      historyKeymap,
+      indentWithTab,
       keymap,
       defaultKeymap,
     } = runtime;
@@ -121,7 +124,11 @@ export default class CodeMirrorInstance {
         this.languageCompartment.of(!this.isConsole ? this.getLanguageExtension() : []),
         this.themeCompartment.of(this.getThemeExtension()),
         this.completionCompartment.of(this.getCompletionExtension()),
-        keymap.of(defaultKeymap),
+        keymap.of([
+          indentWithTab,
+          ...historyKeymap,
+          ...defaultKeymap,
+        ]),
         EditorView.updateListener.of((update) => {
           if (update.docChanged && !this.isConsole) this.handleChange();
         }),
@@ -138,6 +145,7 @@ export default class CodeMirrorInstance {
     if (this.options.minHeightFromContent) this.applyMinHeightFromContent();
     this.attachResizeObserver();
     this.shieldPrintableKeypresses();
+    this.shieldEditorKeyboardShortcuts();
     if (!this.isConsole) this.setupRunShortcut();
   }
 
@@ -287,6 +295,23 @@ export default class CodeMirrorInstance {
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
         this.run();
+      }
+    });
+  }
+
+  // Stops editor-relevant Ctrl/Cmd shortcuts from bubbling to the H5P page layer,
+  // preventing the host application from intercepting undo, clipboard, etc.
+  // Uses stopPropagation only – never preventDefault – so browser clipboard APIs
+  // (copy, cut, paste) and CodeMirror's own handlers still execute normally.
+  shieldEditorKeyboardShortcuts() {
+    if (!this.editorView) return;
+
+    const shielded = new Set(['a', 'c', 'x', 'v', 'z', 'y', '/']);
+
+    this.editorView.dom.addEventListener('keydown', (event) => {
+      if (!event.ctrlKey && !event.metaKey) return;
+      if (event.key && shielded.has(event.key.toLowerCase())) {
+        event.stopPropagation();
       }
     });
   }
@@ -544,7 +569,7 @@ export default class CodeMirrorInstance {
       const message = typeof diagnostic.message === 'string' ? diagnostic.message : '';
       const decoration = Decoration.mark({
         class: `cm-inline-diagnostic cm-inline-diagnostic-${severity}`,
-        attributes: message ? { title: message, 'aria-label': message } : {},
+        attributes: message ? { 'aria-label': message } : {},
       });
 
       if (from === to) {

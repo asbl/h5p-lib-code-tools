@@ -11,3 +11,37 @@
 .h5p-markdown-code-block .cm-scroller {
 	overflow: auto;
 }
+
+.h5p-markdown-table-wrapper {
+	margin: 1rem 0;
+	overflow-x: auto;
+}
+
+.h5p-markdown-table {
+	width: 100%;
+	border-collapse: collapse;
+	border: 1px solid rgba(15, 23, 42, 0.18);
+	border-radius: 6px;
+	color: #0f172a;
+	font-size: 0.95em;
+	line-height: 1.45;
+	overflow: hidden;
+}
+
+.h5p-markdown-table th,
+.h5p-markdown-table td {
+	padding: 0.5rem 0.65rem;
+	border: 1px solid rgba(15, 23, 42, 0.14);
+	text-align: left;
+	vertical-align: top;
+}
+
+.h5p-markdown-table th {
+	background: #f3f6f9;
+	color: #111827;
+	font-weight: 600;
+}
+
+.h5p-markdown-table tbody tr:nth-child(even) {
+	background: rgba(15, 23, 42, 0.025);
+}

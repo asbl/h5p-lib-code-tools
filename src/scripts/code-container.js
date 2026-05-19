@@ -226,6 +226,7 @@ export default class CodeContainer {
           sourceFiles: Array.isArray(options?.sourceFiles) ? options.sourceFiles : [],
           editorMode: options?.editorMode || 'code',
           blocklyCategories: options?.blocklyCategories ?? null,
+          blocklyWorkspaceState: options?.blocklyWorkspaceState ?? null,
           blocklyPackages,
           codeContainer: this,
           onOpenFileManager: () => this.showFileManagerPage(),

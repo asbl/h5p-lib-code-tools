@@ -1,7 +1,8 @@
 import { Decoration, EditorView, keymap, lineNumbers } from '@codemirror/view';
 import { Compartment, EditorState, Transaction, StateEffect, StateField, RangeSetBuilder } from '@codemirror/state';
-import { defaultKeymap, history } from '@codemirror/commands';
+import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { python } from '@codemirror/lang-python';
+import { java } from '@codemirror/lang-java';
 import { javascript } from '@codemirror/lang-javascript';
 import { markdown } from '@codemirror/lang-markdown';
 import { sql, SQLite } from '@codemirror/lang-sql';
@@ -21,8 +22,11 @@ const sharedCodeMirrorRuntime = {
   StateField,
   RangeSetBuilder,
   defaultKeymap,
+  historyKeymap,
+  indentWithTab,
   history,
   python,
+  java,
   javascript,
   markdown,
   sql,

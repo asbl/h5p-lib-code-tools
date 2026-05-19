@@ -651,6 +651,7 @@ export default class FileManager {
     removeButton.type = 'button';
     removeButton.classList.add('button', 'file-manager__remove-button');
     removeButton.textContent = this.getL10n(this.l10nKeys.remove);
+    removeButton.setAttribute('aria-label', `${this.getL10n(this.l10nKeys.remove)}: ${file.name}`);
     removeButton.addEventListener('click', () => this.removeFile(file.id));
     item.appendChild(removeButton);
 

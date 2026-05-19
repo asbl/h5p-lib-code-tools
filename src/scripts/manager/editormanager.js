@@ -2,6 +2,7 @@ import CodeMirrorInstance from '../editor/codemirror/codemirror-instance.js';
 import BlocklyEditorInstance from '../editor/blockly/blockly-editor-instance.js';
 import { ensureBlocklyRuntime } from '../editor/blockly/blockly-runtime.js';
 import { ensureCodeMirrorRuntime } from '../editor/codemirror/codemirror-runtime.js';
+import { BlocklyProjectContextBuilder } from '../editor/blockly/project-symbols.js';
 
 /**
  * Supported editor mode identifiers.
@@ -102,6 +103,7 @@ export default class EditorManager {
 
     // Per-language category selection for Blockly (null = full toolbox).
     this.blocklyCategories = workspaceOptions?.blocklyCategories ?? null;
+    this.blocklyWorkspaceState = workspaceOptions?.blocklyWorkspaceState ?? null;
 
     // CodeContainer for accessing uploaded images/sounds in Blockly.
     this.codeContainer = workspaceOptions?.codeContainer ?? null;
@@ -345,6 +347,7 @@ export default class EditorManager {
         visible: file.visible !== false,
         editable: file.editable !== false,
         isEntry: false,
+        blocklyWorkspaceState: file.blocklyWorkspaceState || null,
       })),
     ];
 
@@ -391,6 +394,7 @@ export default class EditorManager {
             ? existingFallback.editable
             : true,
         isEntry,
+        blocklyWorkspaceState: file?.blocklyWorkspaceState || existingFallback?.blocklyWorkspaceState || null,
       };
 
       if (normalizedFile.isEntry) {
@@ -487,11 +491,12 @@ export default class EditorManager {
     }
 
     const fallbackBaseName = `module_${index + 1}`;
+    const extension = this.getDefaultWorkspaceFileExtension();
     const lastSegment = String(name || '')
       .split(/[\\/]/)
       .pop()
       ?.trim() || '';
-    const baseName = lastSegment.replace(/\.py$/i, '');
+    const baseName = lastSegment.replace(/\.[A-Za-z0-9]+$/i, '');
     const normalizedBaseName = baseName
       .replace(/[^A-Za-z0-9_]/g, '_')
       .replace(/^([^A-Za-z_]+)/, '')
@@ -499,7 +504,23 @@ export default class EditorManager {
       .replace(/^$/, fallbackBaseName)
       .replace(/^main$/, fallbackBaseName);
 
-    return `${normalizedBaseName}.py`;
+    return `${normalizedBaseName}${extension}`;
+  }
+
+  getDefaultWorkspaceFileExtension() {
+    switch (String(this.codingLanguage || '').toLowerCase()) {
+      case 'java':
+        return '.java';
+      case 'javascript':
+        return '.js';
+      case 'markdown':
+        return '.md';
+      case 'sql':
+        return '.sql';
+      case 'python':
+      default:
+        return '.py';
+    }
   }
 
   getWorkspaceFileExtension(name = '') {
@@ -860,7 +881,15 @@ export default class EditorManager {
       completionConfig: this.codeMirrorCompletionConfig,
     };
 
-    if (this.editorMode === 'blocks' || this.editorMode === 'both') {
+    const shouldUseBlockly = this.editorMode === 'blocks' || this.editorMode === 'both';
+    const blocklyWorkspaceState = activeFile.isEntry
+      ? this.blocklyWorkspaceState
+      : activeFile.blocklyWorkspaceState;
+    const staticCode = !activeFile.isEntry && !activeFile.blocklyWorkspaceState
+      ? activeFile.code
+      : null;
+
+    if (shouldUseBlockly) {
       this._editorInstance = new BlocklyEditorInstance(
         this._editorElement,
         activeFile.code,
@@ -869,8 +898,11 @@ export default class EditorManager {
           ...sharedOptions,
           editorMode: this.editorMode,
           blocklyCategories: this.blocklyCategories,
+          blocklyWorkspaceState,
           blocklyPackages: this.blocklyPackages,
           codeContainer: this.codeContainer,
+          blocklyContext: this.buildBlocklyContext(activeFile),
+          staticCode,
         }
       );
     }
@@ -910,6 +942,10 @@ export default class EditorManager {
       || this.findWorkspaceFile(this._workspace.entryFileName)
       || this._workspace.files[0]
       || null;
+  }
+
+  buildBlocklyContext(activeFile) {
+    return new BlocklyProjectContextBuilder(this._workspace, this.workspaceOptions).build(activeFile);
   }
 
   findWorkspaceFile(fileName) {

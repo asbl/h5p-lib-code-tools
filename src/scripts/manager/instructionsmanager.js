@@ -47,10 +47,17 @@ export default class InstructionsManager {
       return;
     }
 
-    this.markdownDiv = await new H5P.Markdown(this.instructions, {
-      codeMirrorCdnUrl: this.codeMirrorCdnUrl,
-      markdownCdnUrl: this.markdownCdnUrl,
-    }).getMarkdownDiv();
+    try {
+      this.markdownDiv = await new H5P.Markdown(this.instructions, {
+        codeMirrorCdnUrl: this.codeMirrorCdnUrl,
+        markdownCdnUrl: this.markdownCdnUrl,
+      }).getMarkdownDiv();
+    }
+    catch (error) {
+      console.error('Failed to render instructions markdown', error);
+      this.markdownDiv = this.createFallbackMarkdownDiv();
+    }
+
     this.markdownDiv.classList.add('instructions-panel__markdown');
     this.renderMarkdownBlock();
   }
@@ -114,11 +121,23 @@ export default class InstructionsManager {
     if (!this.markdownHost) {
       this.markdownHost = document.createElement('div');
       this.markdownHost.classList.add('instructions-panel__markdown');
+      this.markdownHost.textContent = this.instructions;
     }
 
     this.renderMarkdownBlock();
 
     return this.markdownHost;
+  }
+
+  /**
+   * Creates a plain-text fallback when markdown rendering is unavailable.
+   * @returns {HTMLDivElement} Fallback text wrapper.
+   */
+  createFallbackMarkdownDiv() {
+    const fallback = document.createElement('div');
+    fallback.classList.add('instructions-panel__markdown', 'markdown-fallback');
+    fallback.textContent = this.instructions;
+    return fallback;
   }
 
   /**
@@ -137,6 +156,8 @@ export default class InstructionsManager {
       this.markdownHost = this.markdownDiv;
       return;
     }
+
+    this.markdownHost.textContent = this.instructions;
   }
 
   /**

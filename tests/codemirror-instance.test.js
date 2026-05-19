@@ -9,6 +9,7 @@ vi.mock('../src/scripts/editor/codemirror/codemirror-runtime.js', () => ({
     },
     StateEffect: { define: () => ({ of: (value) => value }) },
     python: () => ({ language: 'python' }),
+    java: () => ({ language: 'java' }),
     javascript: () => ({ language: 'javascript' }),
     markdown: () => ({ language: 'markdown' }),
     SQLite: { name: 'sqlite' },
@@ -66,6 +67,11 @@ describe('CodeMirrorInstance', () => {
     };
 
     expect(pythonInstance.getLanguageExtension()).toBeTruthy();
+    const javaInstance = Object.create(CodeMirrorInstance.prototype);
+    javaInstance.codingLanguage = 'java';
+    javaInstance.options = {};
+
+    expect(javaInstance.getLanguageExtension()).toEqual({ language: 'java' });
     expect(sqlInstance.getLanguageExtension()).toEqual({
       language: 'sql',
       config: {

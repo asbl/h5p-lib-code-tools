@@ -35,7 +35,10 @@ export default class BlocklyEditorInstance {
       editorMode: 'blocks',
       blocklyCategories: null,
       blocklyPackages: [],
+      blocklyWorkspaceState: null,
+      blocklyContext: {},
       codeContainer: null,
+      staticCode: null,
       ...options,
     };
     this.options.blocklyPackages = Array.isArray(this.options.blocklyPackages)
@@ -58,6 +61,8 @@ export default class BlocklyEditorInstance {
         readonly: this.options.readonly,
         blocklyCategories: this.options.blocklyCategories,
         blocklyPackages: this.options.blocklyPackages,
+        blocklyWorkspaceState: this.options.blocklyWorkspaceState,
+        blocklyContext: this.options.blocklyContext,
         onCodeChange: (code) => {
           this._refreshCodePreview(code);
           this.options.onChangeCallback(code);
@@ -76,6 +81,10 @@ export default class BlocklyEditorInstance {
    * @returns {string} Generated source code.
    */
   getCode() {
+    if (typeof this.options.staticCode === 'string') {
+      return this.options.staticCode;
+    }
+
     return this._workspaceManager.getCode();
   }
 
@@ -145,7 +154,9 @@ export default class BlocklyEditorInstance {
   }
 
   _refreshCodePreview(code) {
-    const text = code ?? this.getCode();
+    const text = typeof this.options.staticCode === 'string'
+      ? this.options.staticCode
+      : (code ?? this.getCode());
     this._layoutManager.setCodePreview(text);
   }
 }

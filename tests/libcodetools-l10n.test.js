@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createLibCodeToolsL10n,
   getLibCodeToolsL10nValue,
+  LibCodeToolsL10nProvider,
 } from '../src/scripts/services/libcodetools-l10n.js';
 
 describe('LibCodeTools localization', () => {
@@ -67,5 +68,30 @@ describe('LibCodeTools localization', () => {
     const l10n = createLibCodeToolsL10n({});
 
     expect(() => l10n.totallyUnknownKey_abc).toThrow('Missing LibCodeTools language key');
+  });
+
+  it('supports isolated provider instances with custom defaults', () => {
+    const provider = new LibCodeToolsL10nProvider({
+      library: 'H5P.CustomTools',
+      defaultStrings: {
+        run: 'Launch',
+      },
+    });
+
+    expect(provider.getValue({}, 'run')).toBe('Launch');
+    expect(H5P.t).toHaveBeenCalledWith('run', undefined, 'H5P.CustomTools');
+  });
+
+  it('allows subclasses to replace the host translation lookup', () => {
+    class StaticL10nProvider extends LibCodeToolsL10nProvider {
+      translate(key) {
+        return key === 'run' ? 'Run from subclass' : null;
+      }
+    }
+
+    const provider = new StaticL10nProvider({ defaultStrings: {} });
+
+    expect(provider.createProxy({}).run).toBe('Run from subclass');
+    expect(H5P.t).not.toHaveBeenCalled();
   });
 });

@@ -36,9 +36,17 @@ describe('Markdown', () => {
     const runtime = {
       marked: {
         use: vi.fn(),
-        parse: vi.fn((text) => text.includes('```python')
-          ? '<pre><code class="language-python">print("Hello")\n</code></pre>'
-          : '<p>Use <code>print()</code> in your answer.</p>'),
+        parse: vi.fn((text) => {
+          if (text.includes('```python')) {
+            return '<pre><code class="language-python">print("Hello")\n</code></pre>';
+          }
+
+          if (text.includes('|')) {
+            return '<table><thead><tr><th>Name</th></tr></thead><tbody><tr><td>Ada</td></tr></tbody></table>';
+          }
+
+          return '<p>Use <code>print()</code> in your answer.</p>';
+        }),
       },
       DOMPurify: {
         sanitize: vi.fn((html) => html),
@@ -76,5 +84,18 @@ describe('Markdown', () => {
 
     expect(renderReadonlyCodeBlock).not.toHaveBeenCalled();
     expect(markdownDiv.querySelector('code')?.textContent).toBe('print()');
+  });
+
+  it('adds markdown table styling hooks', async () => {
+    const markdown = new Markdown('| Name |\n| --- |\n| Ada |');
+
+    const markdownDiv = await markdown.getMarkdownDiv();
+    const wrapper = markdownDiv.querySelector('.h5p-markdown-table-wrapper');
+    const table = markdownDiv.querySelector('.h5p-markdown-table');
+
+    expect(wrapper).not.toBeNull();
+    expect(table).not.toBeNull();
+    expect(wrapper?.contains(table)).toBe(true);
+    expect(table?.querySelector('th')?.textContent).toBe('Name');
   });
 });

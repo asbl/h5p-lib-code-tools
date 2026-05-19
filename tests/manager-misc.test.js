@@ -34,7 +34,7 @@ const { BlocklyEditorInstanceMock, blocklyInstances } = vi.hoisted(() => {
       content,
       language,
       options,
-      getCode: vi.fn(() => '# generated'),
+      getCode: vi.fn(() => typeof options.staticCode === 'string' ? options.staticCode : '# generated'),
       setCode: vi.fn(),
       destroy: vi.fn(),
       setFixedLines: vi.fn(),
@@ -262,6 +262,37 @@ describe('EditorManager', () => {
 
     expect(snapshot.files.find((file) => file.name === 'helper.py')?.code).toBe('VALUE = 2');
     expect(snapshot.files.find((file) => file.name === 'secret.py')?.code).toBe('TOKEN = 1');
+  });
+
+  it('keeps Java workspace files as .java tabs', async () => {
+    const manager = new EditorManager(
+      'public class Main {}',
+      'java',
+      '',
+      '',
+      true,
+      5,
+      'editor',
+      'pre',
+      'post',
+      vi.fn(),
+      vi.fn(),
+      'light',
+      {
+        enabled: true,
+        entryFileName: 'Main.java',
+        sourceFiles: [
+          { name: 'Helper.java', code: 'public class Helper {}', visible: true, editable: true },
+          { name: 'MessageFormatter.java', code: 'public class MessageFormatter {}', visible: true, editable: true },
+        ],
+      },
+    );
+
+    expect(manager.getWorkspaceSnapshot().files.map((file) => file.name)).toEqual([
+      'Main.java',
+      'Helper.java',
+      'MessageFormatter.java',
+    ]);
   });
 
   it('shows file tabs and a "+" button when allowAddingFiles is enabled', async () => {
@@ -494,6 +525,36 @@ describe('EditorManager', () => {
     expect(BlocklyEditorInstanceMock.mock.calls[0][3].editorMode).toBe('both');
   });
 
+  it('keeps additional source files in the Blockly layout without replacing their code', async () => {
+    const manager = new EditorManager(
+      'public class Main {}', 'java', '', '', true, 5, 'editor', 'pre', 'post',
+      vi.fn(), vi.fn(), 'light',
+      {
+        editorMode: 'both',
+        entryFileName: 'Main.java',
+        sourceFiles: [
+          {
+            name: 'Helper.java',
+            code: 'public class Helper {}',
+            visible: true,
+            editable: true,
+          },
+        ],
+      },
+    );
+    manager.getDOM();
+    await manager.setupEditors();
+
+    expect(BlocklyEditorInstanceMock).toHaveBeenCalledTimes(1);
+    expect(CodeMirrorInstanceMock).not.toHaveBeenCalled();
+
+    manager.setActiveFile('Helper.java');
+
+    expect(CodeMirrorInstanceMock).not.toHaveBeenCalled();
+    expect(BlocklyEditorInstanceMock).toHaveBeenCalledTimes(2);
+    expect(BlocklyEditorInstanceMock.mock.calls[1][3].staticCode).toBe('public class Helper {}');
+  });
+
   it('rejects unknown editorMode and falls back to "code"', async () => {
     const manager = new EditorManager(
       'print(1)', 'python', '', '', true, 5, 'editor', 'pre', 'post',
@@ -664,6 +725,29 @@ describe('CanvasManager', () => {
     expect(manager.canvasWrapper).toBeNull();
     // hasCanvas may still be true until a new canvas is attached
   });
+
+  it('replaces an existing canvas wrapper when a new run attaches a fresh one', () => {
+    const firstWrapper = document.createElement('div');
+    firstWrapper.className = 'canvas-wrapper';
+    const secondWrapper = document.createElement('div');
+    secondWrapper.className = 'canvas-wrapper';
+
+    const page = document.createElement('div');
+    const pageManager = {
+      appendChild: vi.fn((pageName, wrapper) => page.appendChild(wrapper)),
+      getPage: vi.fn(() => page),
+      showPage: vi.fn(),
+    };
+
+    const manager = new CanvasManager(true, pageManager, {});
+    manager.addCanvas(firstWrapper);
+    manager.addCanvas(secondWrapper);
+
+    expect(page.querySelectorAll('.canvas-wrapper')).toHaveLength(1);
+    expect(page.contains(firstWrapper)).toBe(false);
+    expect(page.contains(secondWrapper)).toBe(true);
+    expect(manager.canvasWrapper).toBe(secondWrapper);
+  });
 });
 
 describe('InstructionsManager', () => {
@@ -763,11 +847,39 @@ describe('InstructionsManager', () => {
     );
 
     const dom = manager.getDOM();
-    expect(dom?.querySelector('.instructions-panel__markdown')?.textContent).toBe('');
+    expect(dom?.querySelector('.instructions-panel__markdown')?.textContent).toBe('Rendered later');
 
     await manager.setupInstructions();
 
     expect(dom?.querySelector('.instructions-panel__markdown')?.textContent).toBe('Rendered later');
+  });
+
+  it('keeps plain instruction text visible when markdown rendering fails', async () => {
+    globalThis.H5P.Markdown = class Markdown {
+      async getMarkdownDiv() {
+        throw new Error('markdown unavailable');
+      }
+    };
+
+    const manager = new InstructionsManager(
+      7,
+      'Fallback text',
+      null,
+      {},
+      {},
+      {},
+      '',
+      ''
+    );
+
+    const dom = manager.getDOM();
+
+    expect(dom?.querySelector('.instructions-panel__markdown')?.textContent).toBe('Fallback text');
+
+    await manager.setupInstructions();
+
+    expect(dom?.querySelector('.instructions-panel__markdown')?.textContent).toBe('Fallback text');
+    expect(dom?.querySelector('.markdown-fallback')).not.toBeNull();
   });
 
   it('returns null when no instructions are available', () => {

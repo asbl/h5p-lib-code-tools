@@ -52,11 +52,16 @@ export default class ConsoleManager {
 
     const header = document.createElement('div');
     header.className = 'console-header';
+    header.id = `${this.consoleUID}-label`;
     header.textContent = this.l10n.console;
 
     const body = document.createElement('div');
     body.id = this.consoleUID;
     body.className = 'console console-body';
+    body.setAttribute('role', 'log');
+    body.setAttribute('aria-live', 'polite');
+    body.setAttribute('aria-relevant', 'additions text');
+    body.setAttribute('aria-labelledby', header.id);
     this._consoleElement = body;
 
     wrapper.appendChild(header);
@@ -90,6 +95,8 @@ export default class ConsoleManager {
         resizeActionHandler: () => this.triggerResizeAction(),
       }
     );
+
+    this.getConsole()?.setAttribute('aria-labelledby', `${this.consoleUID}-label`);
   }
 
   /**
@@ -98,7 +105,7 @@ export default class ConsoleManager {
    */
   getConsole() {
     if (this._consoleInstance) {
-      return this._consoleInstance.editorView.dom;
+      return this._consoleInstance.editorView?.dom || null;
     }
     return null;
   }
