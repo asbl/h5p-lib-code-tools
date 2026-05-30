@@ -51,6 +51,7 @@ export default class CodeContainer {
     this.fullscreen = false;
     this._fullscreenExitHandlerRegistered = false;
     this._fullscreenExitHandlerScope = null;
+    this._pendingWorkspaceSnapshot = options.workspaceSnapshot || null;
 
     this.handleFullscreenExit = () => {
       if (!this.fullscreen || typeof this.unsetFullscreen !== 'function') {
@@ -91,9 +92,9 @@ export default class CodeContainer {
     this._storageManager = new StorageManager(
       this,
       {
-        downloadFilename: this.options?.downloadFilename,
-        projectDownloadFilename: this.options?.projectDownloadFilename,
-        projectBundleType: this.options?.projectBundleType,
+        downloadFilename: this.options?.downloadFilename || this.getDefaultEntryFileName(),
+        projectDownloadFilename: this.options?.projectDownloadFilename || this.getDefaultProjectDownloadFilename(),
+        projectBundleType: this.options?.projectBundleType || this.getDefaultProjectBundleType(),
         jsZipCdnUrl: this.options?.jsZipCdnUrl || '',
       },
     );
@@ -200,6 +201,51 @@ export default class CodeContainer {
     return [];
   }
 
+  /**
+   * Returns the default source file name for the configured language.
+   * @returns {string} Default entry file name.
+   */
+  getDefaultEntryFileName() {
+    switch (String(this.codingLanguage || '').toLowerCase()) {
+      case 'java':
+        return 'Main.java';
+      case 'javascript':
+        return 'main.js';
+      case 'markdown':
+        return 'README.md';
+      case 'sql':
+        return 'query.sql';
+      case 'python':
+        return 'main.py';
+      default:
+        return 'main.txt';
+    }
+  }
+
+  /**
+   * Returns the default project bundle type for the configured language.
+   * @returns {string} Project bundle type.
+   */
+  getDefaultProjectBundleType() {
+    const language = String(this.codingLanguage || '').trim().toLowerCase();
+    const supportedLanguages = ['java', 'javascript', 'markdown', 'python', 'sql'];
+
+    if (supportedLanguages.includes(language)) {
+      return `h5p-${language}-question-project`;
+    }
+
+    return 'h5p-code-tools-project';
+  }
+
+  /**
+   * Returns the default project download file name for the configured language.
+   * @returns {string} Project download file name.
+   */
+  getDefaultProjectDownloadFilename() {
+    const language = String(this.codingLanguage || '').trim().toLowerCase();
+    return language ? `${language}-project.zip` : 'code-project.zip';
+  }
+
   getEditorManager(parent, options) {
     if (!this._editorManager) {
       const blocklyPackages = this.resolveBlocklyPackages(options);
@@ -219,7 +265,7 @@ export default class CodeContainer {
         this.getTheme(),
         {
           enabled: options?.projectStorageEnabled === true,
-          entryFileName: options?.entryFileName || 'main.py',
+          entryFileName: options?.entryFileName || this.getDefaultEntryFileName(),
           allowAddingFiles: options?.allowAddingFiles === true,
           blocklyCdnUrl: options?.blocklyCdnUrl || '',
           codeMirrorCdnUrl: options?.codeMirrorCdnUrl || '',
@@ -484,6 +530,7 @@ export default class CodeContainer {
     this._pageManager = this.getPageManager();
     this._buttonManager = this.getButtonManager(this.parent, this.options);
     this._editorManager = this.getEditorManager(this.parent, this.options);
+    this.applyPendingWorkspaceSnapshot();
     this._consoleManager = this.getConsoleManager(this.parent, this.options);
     this._canvasManager = this.getCanvasManager(this.parent, this.options);
     this._imageManager = this.getImageManager(this.parent, this.options);
@@ -717,6 +764,38 @@ export default class CodeContainer {
   }
 
   /**
+   * Applies or queues a workspace snapshot without forcing early manager creation.
+   * @param {object|null} workspaceSnapshot Workspace snapshot to restore.
+   * @returns {void}
+   */
+  setWorkspaceSnapshot(workspaceSnapshot = null) {
+    if (!workspaceSnapshot) {
+      return;
+    }
+
+    if (this._editorManager) {
+      this._editorManager.setWorkspaceSnapshot?.(workspaceSnapshot);
+      this._pendingWorkspaceSnapshot = null;
+      return;
+    }
+
+    this._pendingWorkspaceSnapshot = workspaceSnapshot;
+  }
+
+  /**
+   * Applies a queued workspace snapshot after managers have been initialized.
+   * @returns {void}
+   */
+  applyPendingWorkspaceSnapshot() {
+    if (!this._pendingWorkspaceSnapshot || !this._editorManager) {
+      return;
+    }
+
+    this._editorManager.setWorkspaceSnapshot?.(this._pendingWorkspaceSnapshot);
+    this._pendingWorkspaceSnapshot = null;
+  }
+
+  /**
    * Indicates whether the current project must be stored as a bundle.
    * @returns {boolean} True if the current project contains multiple files.
    */
@@ -751,7 +830,7 @@ export default class CodeContainer {
     }
 
     return {
-      type: this.options?.projectBundleType || 'h5p-python-question-project',
+      type: this.options?.projectBundleType || this.getDefaultProjectBundleType(),
       version: 1,
       entryFileName: workspace.entryFileName,
       activeFileName: workspace.activeFileName,
@@ -761,6 +840,7 @@ export default class CodeContainer {
         visible: file.visible !== false,
         editable: file.editable !== false,
         isEntry: file.isEntry === true,
+        blankValues: file.blankValues ? { ...file.blankValues } : null,
       })),
       images: this.getImageManager()?.isEnabled?.() === true
         ? this.getImageManager().serializeFiles()
@@ -781,7 +861,7 @@ export default class CodeContainer {
       return false;
     }
 
-    if (projectBundle?.type !== (this.options?.projectBundleType || 'h5p-python-question-project')) {
+    if (projectBundle?.type !== (this.options?.projectBundleType || this.getDefaultProjectBundleType())) {
       return false;
     }
 
@@ -798,6 +878,7 @@ export default class CodeContainer {
           visible: file.visible !== false,
           editable: file.editable !== false,
           isEntry: file.isEntry === true,
+          blankValues: file.blankValues ? { ...file.blankValues } : null,
         }))
       : [];
 
@@ -805,8 +886,8 @@ export default class CodeContainer {
       return false;
     }
 
-    this.getEditorManager().setWorkspaceSnapshot({
-      entryFileName: projectBundle.entryFileName || this.options?.entryFileName || 'main.py',
+    this.setWorkspaceSnapshot({
+      entryFileName: projectBundle.entryFileName || this.options?.entryFileName || this.getDefaultEntryFileName(),
       activeFileName: projectBundle.activeFileName,
       files: workspaceFiles,
     });

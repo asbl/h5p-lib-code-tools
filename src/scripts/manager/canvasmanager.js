@@ -20,7 +20,7 @@ export default class CanvasManager {
    * @returns True if canvas page exists and canvas is not empty.
    */
   hasVisibleCanvas() {
-    if (this.hasCanvas == false) return;
+    if (this.hasCanvas === false) return false;
     const canvasElements = this.pageManager
       .getPage('canvas')
       .querySelector('.canvas-wrapper');
@@ -41,7 +41,7 @@ export default class CanvasManager {
    * @param {string} [type] - Canvas type (optional, for compatibility)
    * @param {string|number} [identifier] - Canvas identifier (optional, for compatibility)
    */
-  addCanvas(canvasWrapper, type, identifier) {
+  addCanvas(canvasWrapper, _type, _identifier) {
     if (this.canvasWrapper && this.canvasWrapper !== canvasWrapper) {
       this.canvasWrapper.remove();
     }

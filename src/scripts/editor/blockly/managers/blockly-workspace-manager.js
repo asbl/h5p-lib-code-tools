@@ -12,6 +12,7 @@ export default class BlocklyWorkspaceManager {
       blocklyCategories: null,
       blocklyPackages: [],
       blocklyWorkspaceState: null,
+      initialCode: '',
       blocklyContext: {},
       onCodeChange: () => { },
       resizeActionHandler: () => { },
@@ -70,6 +71,7 @@ export default class BlocklyWorkspaceManager {
     });
 
     this._loadInitialWorkspaceState(Blockly);
+    this._selectInitialToolboxCategory();
 
     this.workspace.addChangeListener((event) => {
       if (event.isUiEvent) {
@@ -88,6 +90,24 @@ export default class BlocklyWorkspaceManager {
    */
   getCode() {
     return this.languageManager.generateCode(this.workspace);
+  }
+
+  /**
+   * Returns a serializable snapshot of the current workspace state.
+   * @returns {object|null} Workspace state object, or null if unavailable.
+   */
+  getWorkspaceState() {
+    if (!this.workspace) {
+      return null;
+    }
+
+    try {
+      const Blockly = getBlocklyRuntime();
+      return Blockly.serialization?.workspaces?.save?.(this.workspace) ?? null;
+    }
+    catch {
+      return null;
+    }
   }
 
   /**
@@ -167,17 +187,46 @@ export default class BlocklyWorkspaceManager {
 
   _loadInitialWorkspaceState(Blockly) {
     const rawState = this.options.blocklyWorkspaceState;
-    if (!rawState) {
+    const parsedState = this._parseWorkspaceState(rawState);
+    const shouldUseFallback = !parsedState || this._isEmptyWorkspaceState(parsedState);
+    const fallbackState = shouldUseFallback
+      ? this.languageManager.createWorkspaceStateFromCode?.(this.options.initialCode)
+      : null;
+    const state = fallbackState || parsedState;
+
+    if (!state) {
       return;
     }
 
     try {
-      const state = typeof rawState === 'string' ? JSON.parse(rawState) : rawState;
       Blockly.serialization?.workspaces?.load?.(state, this.workspace);
       this.options.onCodeChange(this.getCode());
     }
     catch {
       // Ignore malformed author-provided starter blocks and leave an empty workspace.
     }
+  }
+
+  _parseWorkspaceState(rawState) {
+    if (!rawState) {
+      return null;
+    }
+
+    try {
+      return typeof rawState === 'string' ? JSON.parse(rawState) : rawState;
+    }
+    catch {
+      return null;
+    }
+  }
+
+  _isEmptyWorkspaceState(state) {
+    const blocks = state?.blocks?.blocks;
+    return !Array.isArray(blocks) || blocks.length === 0;
+  }
+
+  _selectInitialToolboxCategory() {
+    const toolbox = this.workspace?.getToolbox?.();
+    toolbox?.clearSelection?.();
   }
 }

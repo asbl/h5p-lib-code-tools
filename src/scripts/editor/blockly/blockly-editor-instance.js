@@ -23,6 +23,7 @@ import BlocklyWorkspaceManager from './managers/blockly-workspace-manager.js';
 export default class BlocklyEditorInstance {
   constructor(target, _content = '', codingLanguage, options = {}) {
     this.parentElement = target instanceof HTMLElement ? target : null;
+    this._initialCode = _content || '';
     this.codingLanguage = codingLanguage;
     this.options = {
       readonly: false,
@@ -62,6 +63,7 @@ export default class BlocklyEditorInstance {
         blocklyCategories: this.options.blocklyCategories,
         blocklyPackages: this.options.blocklyPackages,
         blocklyWorkspaceState: this.options.blocklyWorkspaceState,
+        initialCode: this._initialCode,
         blocklyContext: this.options.blocklyContext,
         onCodeChange: (code) => {
           this._refreshCodePreview(code);
@@ -85,7 +87,15 @@ export default class BlocklyEditorInstance {
       return this.options.staticCode;
     }
 
-    return this._workspaceManager.getCode();
+    return this._workspaceManager.getCode() || this._initialCode || '';
+  }
+
+  /**
+   * Returns a serializable snapshot of the current workspace state.
+   * @returns {object|null} Workspace state object, or null if unavailable.
+   */
+  getWorkspaceState() {
+    return this._workspaceManager.getWorkspaceState();
   }
 
   /**

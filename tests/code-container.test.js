@@ -237,6 +237,134 @@ describe('CodeContainer theme toggle', () => {
     });
   });
 
+  it('preserves fill-blank values in project bundles', () => {
+    const container = createContainer({
+      projectBundleType: 'h5p-python-question-project',
+      projectStorageEnabled: true,
+    });
+
+    container.hasProjectBundleContents = vi.fn(() => true);
+    container.getWorkspaceSnapshot = vi.fn(() => ({
+      entryFileName: 'main.py',
+      activeFileName: 'main.py',
+      files: [
+        {
+          name: 'main.py',
+          code: 'x = [[blank:1]]',
+          visible: true,
+          editable: true,
+          isEntry: true,
+          blankValues: { 1: '5' },
+        },
+      ],
+    }));
+
+    expect(container.getProjectBundle().sourceFiles[0]).toMatchObject({
+      name: 'main.py',
+      code: 'x = [[blank:1]]',
+      blankValues: { 1: '5' },
+    });
+  });
+
+  it('restores fill-blank values from project bundles', () => {
+    const container = createContainer({
+      projectBundleType: 'h5p-python-question-project',
+      projectStorageEnabled: true,
+      entryFileName: 'main.py',
+    });
+    const setWorkspaceSnapshot = vi.spyOn(container, 'setWorkspaceSnapshot');
+
+    expect(container.applyProjectBundle({
+      type: 'h5p-python-question-project',
+      entryFileName: 'main.py',
+      activeFileName: 'main.py',
+      sourceFiles: [
+        {
+          name: 'main.py',
+          code: 'x = [[blank:1]]',
+          visible: true,
+          editable: true,
+          isEntry: true,
+          blankValues: { 1: '5' },
+        },
+      ],
+    })).toBe(true);
+
+    expect(setWorkspaceSnapshot).toHaveBeenCalledWith(expect.objectContaining({
+      files: [
+        expect.objectContaining({
+          name: 'main.py',
+          blankValues: { 1: '5' },
+        }),
+      ],
+    }));
+  });
+
+  it('queues project bundle workspaces without creating the editor manager early', () => {
+    const container = createContainer({
+      projectBundleType: 'h5p-python-question-project',
+      projectStorageEnabled: true,
+      entryFileName: 'main.py',
+    });
+    const getEditorManager = vi.spyOn(container, 'getEditorManager');
+
+    expect(container.applyProjectBundle({
+      type: 'h5p-python-question-project',
+      entryFileName: 'main.py',
+      activeFileName: 'main.py',
+      sourceFiles: [
+        {
+          name: 'main.py',
+          code: 'print("queued")',
+          visible: true,
+          editable: true,
+          isEntry: true,
+        },
+      ],
+    })).toBe(true);
+
+    expect(getEditorManager).not.toHaveBeenCalled();
+    expect(container._pendingWorkspaceSnapshot).toMatchObject({
+      entryFileName: 'main.py',
+      files: [
+        expect.objectContaining({
+          code: 'print("queued")',
+        }),
+      ],
+    });
+  });
+
+  it('queues workspace snapshots until the editor manager is initialized', () => {
+    const workspaceSnapshot = {
+      entryFileName: 'main.py',
+      activeFileName: 'main.py',
+      files: [
+        {
+          name: 'main.py',
+          code: 'print("restored")',
+          visible: true,
+          editable: true,
+          isEntry: true,
+        },
+      ],
+    };
+    const container = createContainer();
+    const getEditorManager = vi.spyOn(container, 'getEditorManager');
+
+    container.setWorkspaceSnapshot(workspaceSnapshot);
+
+    expect(getEditorManager).not.toHaveBeenCalled();
+    expect(container._pendingWorkspaceSnapshot).toBe(workspaceSnapshot);
+
+    container._editorManager = {
+      setWorkspaceSnapshot: vi.fn(),
+    };
+    container.applyPendingWorkspaceSnapshot();
+
+    expect(container._editorManager.setWorkspaceSnapshot).toHaveBeenCalledWith(workspaceSnapshot);
+    expect(container._pendingWorkspaceSnapshot).toBeNull();
+  });
+
   it('renders a single instructions wrapper around the instructions panel', () => {
     vi.useFakeTimers();
 

@@ -147,7 +147,6 @@ describe('StorageManager', () => {
   });
 
   it('saves to and loads from localStorage', () => {
-    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
     const manager = new StorageManager(codeContainer, { localStorageKey: 'code-key' });
 
     manager.saveToLocalStorage();
@@ -156,7 +155,6 @@ describe('StorageManager', () => {
     localStorage.setItem('code-key', 'print(2)');
     expect(manager.loadFromLocalStorage()).toBe('print(2)');
     expect(editorManager.setCode).toHaveBeenCalledWith('print(2)');
-    expect(log).toHaveBeenCalled();
   });
 
   it('downloads code via a blob URL', () => {
@@ -201,13 +199,11 @@ describe('StorageManager', () => {
       return element;
     });
 
-    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
     const manager = new StorageManager(codeContainer);
 
     await expect(manager.loadFile()).resolves.toBe('print(3)');
     expect(codeContainer.setCode).toHaveBeenCalledWith('print(3)');
     expect(editorManager.setCode).not.toHaveBeenCalled();
-    expect(log).toHaveBeenCalled();
   });
 
   it('resolves to null when the user cancels loading', async () => {
@@ -320,7 +316,7 @@ describe('StorageManager', () => {
     const manager = new StorageManager(codeContainer);
 
     await expect(manager.loadFile()).resolves.toEqual(expect.objectContaining({
-      type: 'h5p-python-question-project',
+      type: 'h5p-code-tools-project',
       version: 1,
     }));
     expect(ensureJsZipRuntime).toHaveBeenCalledTimes(1);
@@ -378,7 +374,9 @@ describe('StorageManager', () => {
       return element;
     });
 
-    const manager = new StorageManager(codeContainer);
+    const manager = new StorageManager(codeContainer, {
+      projectBundleType: 'h5p-python-question-project',
+    });
 
     await expect(manager.loadFile()).resolves.toEqual(expect.objectContaining({
       type: 'h5p-python-question-project',

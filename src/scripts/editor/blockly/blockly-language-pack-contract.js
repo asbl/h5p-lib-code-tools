@@ -14,6 +14,8 @@ export const UNSUPPORTED_TOOLBOX = {
  * Blockly blocks required by this language pack.
  * @property {(context: object) => object[]} [buildDynamicCategories] Builds
  * toolbox categories from the active editor/project context.
+ * @property {(code: string) => object|null} [createWorkspaceStateFromCode]
+ * Creates an initial Blockly workspace state from source code when possible.
  * @property {boolean} [supported=true] Whether Blockly editing is supported for
  * this language.
  */
@@ -24,6 +26,7 @@ export const UNSUPPORTED_LANGUAGE_PACK = {
   generate: () => '',
   registerBlocks: () => {},
   buildDynamicCategories: () => [],
+  createWorkspaceStateFromCode: () => null,
   supported: false,
 };
 
@@ -62,6 +65,9 @@ export class BlocklyLanguagePackContract {
       buildDynamicCategories: typeof languagePack?.buildDynamicCategories === 'function'
         ? languagePack.buildDynamicCategories
         : () => [],
+      createWorkspaceStateFromCode: typeof languagePack?.createWorkspaceStateFromCode === 'function'
+        ? languagePack.createWorkspaceStateFromCode
+        : () => null,
       supported: languagePack?.supported !== false,
     };
   }
@@ -113,6 +119,13 @@ export class BlocklyLanguagePackContract {
       && typeof languagePack.buildDynamicCategories !== 'function'
     ) {
       errors.push('Language pack buildDynamicCategories hook must be a function when present.');
+    }
+
+    if (
+      languagePack.createWorkspaceStateFromCode !== undefined
+      && typeof languagePack.createWorkspaceStateFromCode !== 'function'
+    ) {
+      errors.push('Language pack createWorkspaceStateFromCode hook must be a function when present.');
     }
 
     if (

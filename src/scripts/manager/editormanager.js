@@ -1,5 +1,7 @@
 import CodeMirrorInstance from '../editor/codemirror/codemirror-instance.js';
 import BlocklyEditorInstance from '../editor/blockly/blockly-editor-instance.js';
+import FillBlanksEditorInstance from '../editor/fill-blanks/fill-blanks-editor-instance.js';
+import { composeFillBlanksCode } from '../editor/fill-blanks/fill-blanks-code.js';
 import { ensureBlocklyRuntime } from '../editor/blockly/blockly-runtime.js';
 import { ensureCodeMirrorRuntime } from '../editor/codemirror/codemirror-runtime.js';
 import { BlocklyProjectContextBuilder } from '../editor/blockly/project-symbols.js';
@@ -9,8 +11,9 @@ import { BlocklyProjectContextBuilder } from '../editor/blockly/project-symbols.
  * - 'code'   → CodeMirror (default)
  * - 'blocks' → Blockly workspace only
  * - 'both'   → Blockly workspace + read-only generated-code preview
+ * - 'fill-blanks' → Inline code template with editable blanks
  */
-const EDITOR_MODES = ['code', 'blocks', 'both'];
+const EDITOR_MODES = ['code', 'blocks', 'both', 'fill-blanks'];
 
 export default class EditorManager {
   constructor(
@@ -77,7 +80,7 @@ export default class EditorManager {
     this.theme = theme === 'dark' ? 'dark' : 'light';
     this.workspaceOptions = {
       enabled: workspaceOptions?.enabled === true,
-      entryFileName: workspaceOptions?.entryFileName || 'main.py',
+      entryFileName: workspaceOptions?.entryFileName || this.getDefaultEntryFileName(),
       allowAddingFiles: workspaceOptions?.allowAddingFiles === true,
       blocklyCdnUrl: workspaceOptions?.blocklyCdnUrl || '',
       codeMirrorCdnUrl: workspaceOptions?.codeMirrorCdnUrl || '',
@@ -146,7 +149,7 @@ export default class EditorManager {
       await ensureBlocklyRuntime(this.blocklyCdnUrl);
     }
 
-    if (this.editorMode !== 'blocks') {
+    if (this.editorMode !== 'blocks' && this.editorMode !== 'fill-blanks') {
       await ensureCodeMirrorRuntime(this.codeMirrorCdnUrl);
     }
 
@@ -395,6 +398,7 @@ export default class EditorManager {
             : true,
         isEntry,
         blocklyWorkspaceState: file?.blocklyWorkspaceState || existingFallback?.blocklyWorkspaceState || null,
+        blankValues: file?.blankValues || existingFallback?.blankValues || null,
       };
 
       if (normalizedFile.isEntry) {
@@ -414,6 +418,7 @@ export default class EditorManager {
         visible: entryFileVisible,
         editable: true,
         isEntry: true,
+        blankValues: workspace?.blankValues || fallbackEntry?.blankValues || null,
       }, files.length);
     }
 
@@ -442,7 +447,10 @@ export default class EditorManager {
       entryFileName: workspace.entryFileName || this.workspaceOptions.entryFileName,
       activeFileName: workspace.activeFileName || workspace.entryFileName || this.workspaceOptions.entryFileName,
       files: Array.isArray(workspace.files)
-        ? workspace.files.map((file) => ({ ...file }))
+        ? workspace.files.map((file) => ({
+          ...file,
+          blankValues: file.blankValues ? { ...file.blankValues } : null,
+        }))
         : [],
     };
   }
@@ -520,6 +528,23 @@ export default class EditorManager {
       case 'python':
       default:
         return '.py';
+    }
+  }
+
+  getDefaultEntryFileName() {
+    switch (String(this.codingLanguage || '').toLowerCase()) {
+      case 'java':
+        return 'Main.java';
+      case 'javascript':
+        return 'main.js';
+      case 'markdown':
+        return 'README.md';
+      case 'sql':
+        return 'query.sql';
+      case 'python':
+        return 'main.py';
+      default:
+        return 'main.txt';
     }
   }
 
@@ -675,7 +700,7 @@ export default class EditorManager {
     const input = document.createElement('input');
     input.type = 'text';
     input.className = 'editor-fm-input';
-    input.placeholder = 'new_file.py';
+    input.placeholder = `new_file${this.getDefaultWorkspaceFileExtension() || '.txt'}`;
     input.setAttribute('aria-label', 'New file name');
 
     const addBtn = document.createElement('button');
@@ -889,7 +914,23 @@ export default class EditorManager {
       ? activeFile.code
       : null;
 
-    if (shouldUseBlockly) {
+    if (this.editorMode === 'fill-blanks') {
+      this._editorInstance = new FillBlanksEditorInstance(
+        this._editorElement,
+        activeFile.code,
+        this.codingLanguage,
+        {
+          ...sharedOptions,
+          blankValues: activeFile.blankValues || {},
+          onChangeCallback: () => {
+            activeFile.code = this._editorInstance.getTemplateCode();
+            activeFile.blankValues = this._editorInstance.getBlankValues();
+            this.onChangeCallback(this.getCode());
+          },
+        }
+      );
+    }
+    else if (shouldUseBlockly) {
       this._editorInstance = new BlocklyEditorInstance(
         this._editorElement,
         activeFile.code,
@@ -930,7 +971,21 @@ export default class EditorManager {
       return;
     }
 
+    if (typeof this._editorInstance.getTemplateCode === 'function') {
+      activeFile.code = this._editorInstance.getTemplateCode();
+      activeFile.blankValues = this._editorInstance.getBlankValues?.() || {};
+      return;
+    }
+
     activeFile.code = this.extractEditableCode(this._editorInstance.getCode(), activeFile);
+
+    if (typeof this._editorInstance.getWorkspaceState === 'function') {
+      const workspaceState = this._editorInstance.getWorkspaceState();
+      activeFile.blocklyWorkspaceState = workspaceState;
+      if (activeFile.isEntry) {
+        this.blocklyWorkspaceState = workspaceState;
+      }
+    }
   }
 
   getActiveFile() {
@@ -964,7 +1019,11 @@ export default class EditorManager {
       return file.code;
     }
 
-    return `${this.getNormalizedPreCode()}${file.code}${this.getNormalizedPostCode()}`;
+    const editableCode = this.editorMode === 'fill-blanks'
+      ? composeFillBlanksCode(file.code, file.blankValues || {})
+      : file.code;
+
+    return `${this.getNormalizedPreCode()}${editableCode}${this.getNormalizedPostCode()}`;
   }
 
   extractEditableCode(code, file) {

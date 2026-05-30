@@ -1,4 +1,4 @@
-import { STATE_EVENTS, STATES } from '../statemanager';
+import { STATE_EVENTS } from '../statemanager';
 import BaseObserver from './baseobserver';
 
 export default class StateRunObserver extends BaseObserver {

@@ -22,10 +22,10 @@ export default class StorageManager {
     this.codeContainer = codeContainer;
 
     // Configuration options
-    this.localStorageKey = options.localStorageKey || 'pythonQuestionCode';
-    this.downloadFilename = options.downloadFilename || 'sketch.py';
-    this.projectDownloadFilename = options.projectDownloadFilename || 'python-project.zip';
-    this.projectBundleType = options.projectBundleType || 'h5p-python-question-project';
+    this.localStorageKey = options.localStorageKey || 'codeToolsCode';
+    this.downloadFilename = options.downloadFilename || 'code.txt';
+    this.projectDownloadFilename = options.projectDownloadFilename || 'code-project.zip';
+    this.projectBundleType = options.projectBundleType || 'h5p-code-tools-project';
     this.jsZipCdnUrl = String(options.jsZipCdnUrl || '').trim();
   }
 
@@ -99,7 +99,6 @@ export default class StorageManager {
       const projectBundle = await this.readProjectBundleZip(file);
 
       if (this.codeContainer.applyProjectBundle?.(projectBundle)) {
-        console.log(`[StorageManager] Project loaded from ZIP file: ${file.name}`);
         return projectBundle;
       }
 
@@ -119,7 +118,6 @@ export default class StorageManager {
 
     if (projectBundle) {
       if (this.codeContainer.applyProjectBundle?.(projectBundle)) {
-        console.log(`[StorageManager] Project loaded from file: ${file.name}`);
         return projectBundle;
       }
 
@@ -144,7 +142,6 @@ export default class StorageManager {
       throw this.createLoadError('load_apply_failed');
     }
 
-    console.log(`[StorageManager] Code loaded from file: ${file.name}`);
     return content;
   }
 
@@ -154,7 +151,6 @@ export default class StorageManager {
   saveToLocalStorage() {
     const code = this.codeContainer.getCode();
     localStorage.setItem(this.localStorageKey, code);
-    console.log(`[StorageManager] Code saved to LocalStorage with key: ${this.localStorageKey}`);
   }
 
   /**
@@ -164,7 +160,6 @@ export default class StorageManager {
     const code = localStorage.getItem(this.localStorageKey);
     if (code !== null && typeof this.codeContainer.setCode === 'function') {
       this.codeContainer.getEditorManager().setCode(code);
-      console.log('[StorageManager] Code loaded from LocalStorage.');
     }
     return code;
   }
@@ -187,7 +182,6 @@ export default class StorageManager {
     a.download = this.downloadFilename;
     a.click();
     URL.revokeObjectURL(url);
-    console.log(`[StorageManager] Code downloaded as file: ${this.downloadFilename}`);
   }
 
   /**
@@ -203,7 +197,6 @@ export default class StorageManager {
     anchor.download = this.projectDownloadFilename;
     anchor.click();
     URL.revokeObjectURL(url);
-    console.log(`[StorageManager] Project downloaded as file: ${this.projectDownloadFilename}`);
   }
 
   /**

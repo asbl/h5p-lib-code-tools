@@ -28,6 +28,7 @@ export default class AssetsBlockProvider {
     const Blockly = getBlocklyRuntime();
     const pythonGenerator = getBlocklyPythonGenerator();
     const blockType = 'assets_image_dropdown';
+    const codeContainer = this.codeContainer;
 
     if (this.registeredBlocks.has(blockType)) {
       return;
@@ -67,6 +68,7 @@ export default class AssetsBlockProvider {
     const Blockly = getBlocklyRuntime();
     const pythonGenerator = getBlocklyPythonGenerator();
     const blockType = 'assets_sound_dropdown';
+    const codeContainer = this.codeContainer;
 
     if (this.registeredBlocks.has(blockType)) {
       return;

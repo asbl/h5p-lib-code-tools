@@ -1,5 +1,5 @@
 import BaseObserver from './baseobserver';
-import { STATE_EVENTS, STATES } from '../statemanager';
+import { STATE_EVENTS } from '../statemanager';
 
 export default class StateStopObserver extends BaseObserver {
   constructor(stateManager, callback) {

@@ -159,6 +159,7 @@ export default class PageManager {
 
     const pageDiv = document.createElement('div');
     pageDiv.classList.add('page', `page-${pageName}`);
+    pageDiv.classList.toggle('active', visible === true);
     if (additionalClass) pageDiv.classList.add(additionalClass);
 
     // Add content
@@ -176,10 +177,10 @@ export default class PageManager {
     // Don't set inline styles to avoid specificity conflicts
     // Insert into array pages
     if (!front) {
-      this.pages.push({ name: pageName, dom: pageDiv, active: false });
+      this.pages.push({ name: pageName, dom: pageDiv, active: visible === true });
     }
     else {
-      this.pages.unshift({ name: pageName, dom: pageDiv, active: false });
+      this.pages.unshift({ name: pageName, dom: pageDiv, active: visible === true });
     }
     return pageDiv;
   }

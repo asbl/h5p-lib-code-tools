@@ -194,4 +194,14 @@ export default class BlocklyLanguageManager {
 
     return this.languagePack.generate(workspace) || '';
   }
+
+  /**
+   * Creates a Blockly workspace state from source code when the language pack
+   * can provide a lossless fallback representation.
+   * @param {string} code Source code.
+   * @returns {object|null} Serializable workspace state or null.
+   */
+  createWorkspaceStateFromCode(code) {
+    return this.languagePack.createWorkspaceStateFromCode?.(code) || null;
+  }
 }
