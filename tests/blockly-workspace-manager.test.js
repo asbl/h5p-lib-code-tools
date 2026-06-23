@@ -23,6 +23,7 @@ const createToolboxItem = (contents = []) => ({
 
 const createWorkspace = (toolbox) => ({
   addChangeListener: vi.fn(),
+  clear: vi.fn(),
   dispose: vi.fn(),
   getToolbox: vi.fn(() => toolbox),
 });
@@ -128,5 +129,31 @@ describe('BlocklyWorkspaceManager', () => {
       fallbackState,
       expect.any(Object)
     );
+  });
+
+  it('replaces the current workspace when code is loaded', () => {
+    const replacementState = {
+      blocks: {
+        languageVersion: 0,
+        blocks: [{ type: 'python_raw_code' }],
+      },
+    };
+    const toolbox = { clearSelection: vi.fn() };
+    const workspace = createWorkspace(toolbox);
+    const languageManager = {
+      buildToolbox: vi.fn(() => ({ kind: 'categoryToolbox', contents: [] })),
+      createWorkspaceStateFromCode: vi.fn(() => replacementState),
+      generateCode: vi.fn(() => 'print("loaded")\n'),
+      registerBlocks: vi.fn(),
+    };
+    const onCodeChange = vi.fn();
+    runtime.inject.mockReturnValueOnce(workspace);
+    const manager = new BlocklyWorkspaceManager('python', languageManager, { onCodeChange });
+    manager.mount(document.createElement('div'), document.createElement('div'), {});
+
+    expect(manager.setCode('print("loaded")')).toBe(true);
+    expect(workspace.clear).toHaveBeenCalledOnce();
+    expect(runtime.serialization.workspaces.load).toHaveBeenLastCalledWith(replacementState, workspace);
+    expect(onCodeChange).toHaveBeenLastCalledWith('print("loaded")\n');
   });
 });

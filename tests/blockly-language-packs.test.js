@@ -261,6 +261,8 @@ describe('buildPackageToolbox', () => {
     expect(miniworldsCategories[0].contents.map((item) => item.type)).toEqual([
       'miniworlds_import_core',
       'miniworlds_rgb_color',
+      'miniworlds_rgba_color',
+      'miniworlds_play_sound',
     ]);
     expect(miniworldsCategories[1].contents.map((item) => item.type)).toEqual([
       'miniworlds_create_world',
@@ -270,17 +272,33 @@ describe('buildPackageToolbox', () => {
       'miniworlds_world_call_method',
       'miniworlds_world_event',
       'miniworlds_world_run',
+      'miniworlds_create_tiled_world',
     ]);
     expect(miniworldsCategories[2].contents.map((item) => item.type)).toEqual([
       'miniworlds_create_actor',
       'miniworlds_actor_add_costume',
+      'miniworlds_actor_set_costume_option',
+      'miniworlds_actor_set_costume_index',
       'miniworlds_actor_move',
+      'miniworlds_actor_move_by',
+      'miniworlds_actor_move_to',
+      'miniworlds_actor_move_towards',
+      'miniworlds_actor_turn',
+      'miniworlds_actor_detect',
+      'miniworlds_actor_set_position',
+      'miniworlds_actor_set_visible',
+      'miniworlds_actor_remove',
+      'miniworlds_create_circle',
+      'miniworlds_create_rectangle',
       'miniworlds_actor_set_attribute',
       'miniworlds_actor_get_attribute',
       'miniworlds_actor_call_method',
       'miniworlds_actor_event_lifecycle',
       'miniworlds_actor_event_key_down',
       'miniworlds_actor_event_key_pressed',
+      'miniworlds_actor_event_key',
+      'miniworlds_actor_event_mouse',
+      'miniworlds_after_delay',
     ]);
   });
 
@@ -307,6 +325,7 @@ describe('buildPackageToolbox', () => {
     expect(Blockly.Blocks.miniworlds_create_actor).toBeDefined();
     expect(Blockly.Blocks.miniworlds_actor_add_costume).toBeDefined();
     expect(Blockly.Blocks.miniworlds_actor_move).toBeDefined();
+    expect(Blockly.Blocks.miniworlds_actor_detect).toBeDefined();
     expect(Blockly.Blocks.miniworlds_actor_set_attribute).toBeDefined();
     expect(Blockly.Blocks.miniworlds_actor_get_attribute).toBeDefined();
     expect(Blockly.Blocks.miniworlds_actor_call_method).toBeDefined();
@@ -344,6 +363,31 @@ describe('buildPackageToolbox', () => {
 
     expect(handlerCode).toBe('@player.register\ndef on_key_down_w(self):\n    player.move_up()\n');
     expect(fallbackCode).toBe('@player.register\ndef on_key_down_w(self):\n    pass\n');
+  });
+
+  it('generates a Miniworlds collision expression', () => {
+    buildPackageToolbox(toolbox, 'python', ['miniworlds'], packageManagers);
+    const block = {
+      getFieldValue: (fieldName) => ({ ACTOR_VAR: 'player', TARGET_VAR: 'coin' })[fieldName],
+    };
+
+    expect(pythonGenerator.forBlock.miniworlds_actor_detect(block)).toEqual([
+      'player.detect(coin)',
+      pythonGenerator.ORDER_FUNCTION_CALL,
+    ]);
+  });
+
+  it('generates a callback body for delayed Miniworlds actions', () => {
+    buildPackageToolbox(toolbox, 'python', ['miniworlds'], packageManagers);
+    const block = { id: 'timer-1' };
+    const generator = {
+      valueToCode: () => '500',
+      statementToCode: () => '    player.move_right()\n',
+    };
+
+    expect(pythonGenerator.forBlock.miniworlds_after_delay(block, generator)).toBe(
+      'def __h5p_timer_timer_1():\n    player.move_right()\nActionTimer(500, __h5p_timer_timer_1, None)\n'
+    );
   });
 
   it('generates Miniworlds world events using selected event name', () => {
@@ -493,7 +537,7 @@ describe('buildPackageToolbox', () => {
     }, workspace);
 
     expect(pythonGenerator.workspaceToCode(workspace)).toBe(
-      'from miniworlds import World, Actor\n'
+      'from miniworlds import World, Actor, Circle, Rectangle, TiledWorld, ActionTimer\n'
       + 'world = World(320, 240)\n'
       + 'world.color = (35, 45, 55)\n'
       + 'player = Actor((80, 90))\n'
@@ -558,7 +602,7 @@ describe('buildPackageToolbox', () => {
     }, workspace);
 
     expect(pythonGenerator.workspaceToCode(workspace)).toBe(
-      'from miniworlds import World, Actor\n'
+      'from miniworlds import World, Actor, Circle, Rectangle, TiledWorld, ActionTimer\n'
       + 'world = World(320, 240)\n'
       + 'player = Actor((140, 120))\n'
       + '@player.register\n'

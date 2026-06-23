@@ -93,6 +93,34 @@ export default class BlocklyWorkspaceManager {
   }
 
   /**
+   * Replaces the current workspace with the language pack's representation of
+   * source code. Returns false when the language pack cannot represent it.
+   * @param {string} code Source code to load.
+   * @returns {boolean} Whether the workspace was updated.
+   */
+  setCode(code) {
+    if (!this.workspace) {
+      return false;
+    }
+
+    const state = this.languageManager.createWorkspaceStateFromCode?.(code);
+    if (!state) {
+      return false;
+    }
+
+    try {
+      const Blockly = getBlocklyRuntime();
+      this.workspace.clear?.();
+      Blockly.serialization?.workspaces?.load?.(state, this.workspace);
+      this.options.onCodeChange(this.getCode());
+      return true;
+    }
+    catch {
+      return false;
+    }
+  }
+
+  /**
    * Returns a serializable snapshot of the current workspace state.
    * @returns {object|null} Workspace state object, or null if unavailable.
    */
@@ -192,7 +220,7 @@ export default class BlocklyWorkspaceManager {
     const fallbackState = shouldUseFallback
       ? this.languageManager.createWorkspaceStateFromCode?.(this.options.initialCode)
       : null;
-    const state = fallbackState || parsedState;
+    const state = this.languageManager.migrateWorkspaceState?.(fallbackState || parsedState) || fallbackState || parsedState;
 
     if (!state) {
       return;

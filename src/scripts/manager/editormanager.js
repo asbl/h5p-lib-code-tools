@@ -149,7 +149,10 @@ export default class EditorManager {
       await ensureBlocklyRuntime(this.blocklyCdnUrl);
     }
 
-    if (this.editorMode !== 'blocks' && this.editorMode !== 'fill-blanks') {
+    const needsCodeMirror = this.editorMode !== 'blocks' && this.editorMode !== 'fill-blanks';
+    const hasStaticSecondaryFiles = (this.editorMode === 'blocks' || this.editorMode === 'both')
+      && this.hasAdditionalSourceFiles();
+    if (needsCodeMirror || hasStaticSecondaryFiles) {
       await ensureCodeMirrorRuntime(this.codeMirrorCdnUrl);
     }
 
@@ -906,13 +909,14 @@ export default class EditorManager {
       completionConfig: this.codeMirrorCompletionConfig,
     };
 
-    const shouldUseBlockly = this.editorMode === 'blocks' || this.editorMode === 'both';
+    // A secondary source file without its own Blockly state cannot safely be
+    // represented as blocks (not every language pack has a raw-code block).
+    // Use CodeMirror so edits are real rather than silently discarded.
+    const shouldUseBlockly = (this.editorMode === 'blocks' || this.editorMode === 'both')
+      && (activeFile.isEntry || Boolean(activeFile.blocklyWorkspaceState));
     const blocklyWorkspaceState = activeFile.isEntry
       ? this.blocklyWorkspaceState
       : activeFile.blocklyWorkspaceState;
-    const staticCode = !activeFile.isEntry && !activeFile.blocklyWorkspaceState
-      ? activeFile.code
-      : null;
 
     if (this.editorMode === 'fill-blanks') {
       this._editorInstance = new FillBlanksEditorInstance(
@@ -943,7 +947,6 @@ export default class EditorManager {
           blocklyPackages: this.blocklyPackages,
           codeContainer: this.codeContainer,
           blocklyContext: this.buildBlocklyContext(activeFile),
-          staticCode,
         }
       );
     }

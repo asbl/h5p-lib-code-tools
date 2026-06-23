@@ -525,7 +525,7 @@ describe('EditorManager', () => {
     expect(BlocklyEditorInstanceMock.mock.calls[0][3].editorMode).toBe('both');
   });
 
-  it('keeps additional source files in the Blockly layout without replacing their code', async () => {
+  it('uses CodeMirror for additional source files without a Blockly workspace', async () => {
     const manager = new EditorManager(
       'public class Main {}', 'java', '', '', true, 5, 'editor', 'pre', 'post',
       vi.fn(), vi.fn(), 'light',
@@ -550,9 +550,9 @@ describe('EditorManager', () => {
 
     manager.setActiveFile('Helper.java');
 
-    expect(CodeMirrorInstanceMock).not.toHaveBeenCalled();
-    expect(BlocklyEditorInstanceMock).toHaveBeenCalledTimes(2);
-    expect(BlocklyEditorInstanceMock.mock.calls[1][3].staticCode).toBe('public class Helper {}');
+    expect(BlocklyEditorInstanceMock).toHaveBeenCalledTimes(1);
+    expect(CodeMirrorInstanceMock).toHaveBeenCalledTimes(1);
+    expect(CodeMirrorInstanceMock.mock.calls[0][1]).toBe('public class Helper {}');
   });
 
   it('rejects unknown editorMode and falls back to "code"', async () => {

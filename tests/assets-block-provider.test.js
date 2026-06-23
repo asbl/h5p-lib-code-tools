@@ -52,8 +52,8 @@ describe('AssetsBlockProvider', () => {
       mockCodeContainer.getImageManager.mockReturnValue({
         isEnabled: () => true,
         getImages: () => [
-          { name: 'bg.png' },
-          { name: 'player.png' },
+          { id: 'image-bg', name: 'bg.png' },
+          { id: 'image-player', name: 'player.png' },
         ],
       });
 
@@ -62,7 +62,7 @@ describe('AssetsBlockProvider', () => {
       // Create and configure a mock block
       const block = {
         getFieldValue: vi.fn((field) => {
-          if (field === 'IMAGE_FILE') return 'bg.png';
+          if (field === 'IMAGE_FILE') return 'image-bg';
           return '';
         }),
       };
@@ -72,7 +72,7 @@ describe('AssetsBlockProvider', () => {
       };
 
       const [code] = pythonGenerator.forBlock.assets_image_dropdown(block, generator);
-      expect(code).toBe('h5p_images["bg.png"]["path"]');
+      expect(code).toBe('h5p_images["image-bg"]["path"]');
     });
   });
 
@@ -90,8 +90,8 @@ describe('AssetsBlockProvider', () => {
       mockCodeContainer.getSoundManager.mockReturnValue({
         isEnabled: () => true,
         getSounds: () => [
-          { name: 'beep.wav' },
-          { name: 'music.mp3' },
+          { id: 'sound-beep', name: 'beep.wav' },
+          { id: 'sound-music', name: 'music.mp3' },
         ],
       });
 
@@ -99,7 +99,7 @@ describe('AssetsBlockProvider', () => {
 
       const block = {
         getFieldValue: vi.fn((field) => {
-          if (field === 'SOUND_FILE') return 'beep.wav';
+          if (field === 'SOUND_FILE') return 'sound-beep';
           return '';
         }),
       };
@@ -109,7 +109,7 @@ describe('AssetsBlockProvider', () => {
       };
 
       const [code] = pythonGenerator.forBlock.assets_sound_dropdown(block, generator);
-      expect(code).toBe('h5p_sounds["beep.wav"]["path"]');
+      expect(code).toBe('h5p_sounds["sound-beep"]["path"]');
     });
   });
 
@@ -128,7 +128,7 @@ describe('AssetsBlockProvider', () => {
       expect(category).toBeNull();
     });
 
-    it('returns null when assets are enabled but no files are uploaded', () => {
+    it('keeps asset selectors available when uploads are enabled but empty', () => {
       mockCodeContainer.getImageManager.mockReturnValue({
         isEnabled: () => true,
         getImages: () => [],
@@ -141,7 +141,10 @@ describe('AssetsBlockProvider', () => {
       provider = new AssetsBlockProvider(mockCodeContainer);
       const category = provider.buildCategory();
 
-      expect(category).toBeNull();
+      expect(category.contents.map((item) => item.type)).toEqual([
+        'assets_image_dropdown',
+        'assets_sound_dropdown',
+      ]);
     });
 
     it('includes image block when images are available', () => {
@@ -245,17 +248,17 @@ describe('AssetsBlockProvider', () => {
       mockCodeContainer.getImageManager.mockReturnValue({
         isEnabled: () => true,
         getImages: () => [
-          { name: 'bg.png' },
-          { name: 'player.png' },
-          { name: 'enemy.jpg' },
+          { id: 'image-bg', name: 'bg.png' },
+          { id: 'image-player', name: 'player.png' },
+          { id: 'image-enemy', name: 'enemy.jpg' },
         ],
       });
 
       const options = AssetsBlockProvider.getImageDropdownOptions(mockCodeContainer);
       expect(options).toEqual([
-        ['bg.png', 'bg.png'],
-        ['player.png', 'player.png'],
-        ['enemy.jpg', 'enemy.jpg'],
+        ['bg.png', 'image-bg'],
+        ['player.png', 'image-player'],
+        ['enemy.jpg', 'image-enemy'],
       ]);
     });
   });
@@ -284,17 +287,17 @@ describe('AssetsBlockProvider', () => {
       mockCodeContainer.getSoundManager.mockReturnValue({
         isEnabled: () => true,
         getSounds: () => [
-          { name: 'beep.wav' },
-          { name: 'music.mp3' },
-          { name: 'click.ogg' },
+          { id: 'sound-beep', name: 'beep.wav' },
+          { id: 'sound-music', name: 'music.mp3' },
+          { id: 'sound-click', name: 'click.ogg' },
         ],
       });
 
       const options = AssetsBlockProvider.getSoundDropdownOptions(mockCodeContainer);
       expect(options).toEqual([
-        ['beep.wav', 'beep.wav'],
-        ['music.mp3', 'music.mp3'],
-        ['click.ogg', 'click.ogg'],
+        ['beep.wav', 'sound-beep'],
+        ['music.mp3', 'sound-music'],
+        ['click.ogg', 'sound-click'],
       ]);
     });
   });
@@ -316,6 +319,31 @@ describe('AssetsBlockProvider', () => {
 
       provider.registerAssetBlocks();
       expect(Blockly.Blocks.assets_image_dropdown).toBe(imageBlock);
+    });
+  });
+
+  describe('migrateWorkspaceState', () => {
+    it('migrates legacy image and sound file names to stable asset IDs', () => {
+      mockCodeContainer.getImageManager.mockReturnValue({ getImages: () => [{ id: 'image-1', name: 'player.png' }] });
+      mockCodeContainer.getSoundManager.mockReturnValue({ getSounds: () => [{ id: 'sound-1', name: 'click.wav' }] });
+      provider = new AssetsBlockProvider(mockCodeContainer);
+      const state = { blocks: { blocks: [{ type: 'assets_image_dropdown', fields: { IMAGE_FILE: 'player.png' }, next: { block: { type: 'assets_sound_dropdown', fields: { SOUND_FILE: 'click.wav' } } } }] } };
+
+      provider.migrateWorkspaceState(state);
+
+      expect(state.blocks.blocks[0].fields.IMAGE_FILE).toBe('image-1');
+      expect(state.blocks.blocks[0].next.block.fields.SOUND_FILE).toBe('sound-1');
+    });
+
+    it('keeps stable IDs and missing legacy assets unchanged', () => {
+      mockCodeContainer.getImageManager.mockReturnValue({ getImages: () => [{ id: 'image-1', name: 'player.png' }] });
+      provider = new AssetsBlockProvider(mockCodeContainer);
+      const state = { blocks: { blocks: [{ type: 'assets_image_dropdown', fields: { IMAGE_FILE: 'image-1' }, next: { block: { type: 'assets_image_dropdown', fields: { IMAGE_FILE: 'deleted.png' } } } }] } };
+
+      provider.migrateWorkspaceState(state);
+
+      expect(state.blocks.blocks[0].fields.IMAGE_FILE).toBe('image-1');
+      expect(state.blocks.blocks[0].next.block.fields.IMAGE_FILE).toBe('deleted.png');
     });
   });
 });

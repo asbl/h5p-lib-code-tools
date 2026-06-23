@@ -53,7 +53,7 @@ export default class AssetsBlockProvider {
 
     pythonGenerator.forBlock[blockType] = (block) => {
       const fileName = block.getFieldValue('IMAGE_FILE');
-      const code = `h5p_images["${fileName}"]["path"]`;
+      const code = `h5p_images[${JSON.stringify(fileName)}]["path"]`;
       return [code, pythonGenerator.ORDER_ATOMIC];
     };
 
@@ -93,7 +93,7 @@ export default class AssetsBlockProvider {
 
     pythonGenerator.forBlock[blockType] = (block) => {
       const fileName = block.getFieldValue('SOUND_FILE');
-      const code = `h5p_sounds["${fileName}"]["path"]`;
+      const code = `h5p_sounds[${JSON.stringify(fileName)}]["path"]`;
       return [code, pythonGenerator.ORDER_ATOMIC];
     };
 
@@ -130,11 +130,14 @@ export default class AssetsBlockProvider {
 
     const contents = [];
 
-    if (hasImages && imageManager?.getImages?.()?.length > 0) {
+    // Keep the category available before the first upload. FieldDropdown reads
+    // its options lazily, so a newly uploaded asset is selectable immediately
+    // without recreating the Blockly workspace.
+    if (hasImages) {
       contents.push({ kind: 'block', type: 'assets_image_dropdown' });
     }
 
-    if (hasSounds && soundManager?.getSounds?.()?.length > 0) {
+    if (hasSounds) {
       contents.push({ kind: 'block', type: 'assets_sound_dropdown' });
     }
 
@@ -148,6 +151,21 @@ export default class AssetsBlockProvider {
       colour: '#FF7F50',
       contents,
     };
+  }
+
+  migrateWorkspaceState(state) {
+    const imageIds = new Map((this.codeContainer?.getImageManager?.()?.getImages?.() || []).map((file) => [file.name, file.id]));
+    const soundIds = new Map((this.codeContainer?.getSoundManager?.()?.getSounds?.() || []).map((file) => [file.name, file.id]));
+    const visit = (block) => {
+      if (!block || typeof block !== 'object') return;
+      const map = block.type === 'assets_image_dropdown' ? imageIds : block.type === 'assets_sound_dropdown' ? soundIds : null;
+      const key = block.type === 'assets_image_dropdown' ? 'IMAGE_FILE' : 'SOUND_FILE';
+      if (map && block.fields?.[key] && map.has(block.fields[key])) block.fields[key] = map.get(block.fields[key]);
+      Object.values(block.inputs || {}).forEach((input) => visit(input?.block || input?.shadow));
+      visit(block.next?.block);
+    };
+    (state?.blocks?.blocks || []).forEach(visit);
+    return state;
   }
 
   /**
@@ -168,7 +186,7 @@ export default class AssetsBlockProvider {
       return [['(no images uploaded)', '']];
     }
 
-    return images.map((image) => [image.name, image.name]);
+    return images.map((image) => [image.name, image.id || image.name]);
   }
 
   /**
@@ -189,6 +207,6 @@ export default class AssetsBlockProvider {
       return [['(no sounds uploaded)', '']];
     }
 
-    return sounds.map((sound) => [sound.name, sound.name]);
+    return sounds.map((sound) => [sound.name, sound.id || sound.name]);
   }
 }

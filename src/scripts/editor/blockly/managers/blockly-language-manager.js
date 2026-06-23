@@ -204,4 +204,8 @@ export default class BlocklyLanguageManager {
   createWorkspaceStateFromCode(code) {
     return this.languagePack.createWorkspaceStateFromCode?.(code) || null;
   }
+
+  migrateWorkspaceState(state) {
+    return this.assetsBlockProvider?.migrateWorkspaceState?.(state) || state;
+  }
 }

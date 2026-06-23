@@ -9,7 +9,8 @@ import BlocklyWorkspaceManager from './managers/blockly-workspace-manager.js';
  *
  * Interface contract (mirrors CodeMirrorInstance public API):
  *   getCode()            → string (always returns Blockly-generated source)
- *   setCode(code)        → no-op; blocks cannot be reconstructed from code
+ *   setCode(code)        → reloads a workspace when the language pack can
+ *                          represent the supplied source
  *   setTheme(theme)      → updates Blockly theme
  *   setFixedLines(n)     → resizes workspace to n×lineHeightPx
  *   restoreDynamicHeight()
@@ -99,11 +100,19 @@ export default class BlocklyEditorInstance {
   }
 
   /**
-   * No-op. Blockly blocks cannot be reconstructed from source code.
-   * Callers that load saved code will silently keep the current workspace.
+   * Reconstructs the workspace from source code where the language pack
+   * provides a representation (including the Python raw-code fallback).
+   * @param {string} code Source code to load.
+   * @returns {boolean} Whether the workspace was updated.
    */
-  setCode(/* code */) {
-    // intentionally empty – see class comment
+  setCode(code) {
+    const updated = this._workspaceManager.setCode(code);
+    if (updated) {
+      this._initialCode = code || '';
+      this._refreshCodePreview();
+    }
+
+    return updated;
   }
 
   /**
