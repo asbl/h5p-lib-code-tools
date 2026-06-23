@@ -11,6 +11,7 @@ import StateManager from './manager/statemanager.js';
 import StorageManager from './manager/storagemanager.js';
 import UIRegistryManager from './manager/uiregistrymanager.js';
 import { createLibCodeToolsL10n } from './services/libcodetools-l10n';
+import WorkspaceAutosave from './services/workspace-autosave.js';
 
 
 /**
@@ -52,6 +53,10 @@ export default class CodeContainer {
     this._fullscreenExitHandlerRegistered = false;
     this._fullscreenExitHandlerScope = null;
     this._pendingWorkspaceSnapshot = options.workspaceSnapshot || null;
+    this.hasExternalWorkspaceState = Boolean(this._pendingWorkspaceSnapshot);
+    this.workspaceAutosave = options.workspaceAutosaveEnabled === true
+      ? new WorkspaceAutosave(options.workspaceAutosaveKey)
+      : null;
 
     this.handleFullscreenExit = () => {
       if (!this.fullscreen || typeof this.unsetFullscreen !== 'function') {
@@ -260,7 +265,10 @@ export default class CodeContainer {
         this.editorUID,
         this.preCodeUID,
         this.postCodeUID,
-        options?.onChangeCallback || (() => { }),
+        (code) => {
+          this.scheduleWorkspaceAutosave();
+          (options?.onChangeCallback || (() => { }))(code);
+        },
         options.resizeActionHandler,
         this.getTheme(),
         {
@@ -546,6 +554,7 @@ export default class CodeContainer {
   async setup() {
     this.registerFullscreenExitHandler();
     this.initializeManagers();
+    await this.restoreWorkspaceAutosave();
     await this.preloadDefaultImages();
 
     // Generate HTML structure
@@ -562,6 +571,17 @@ export default class CodeContainer {
     this.applyTheme();
     this.getPageManager().showPage('code');
     await this._editorManager.setupEditors();
+  }
+
+  /** Restores local work only when the H5P host did not provide saved state. */
+  async restoreWorkspaceAutosave() {
+    if (!this.workspaceAutosave || this.hasExternalWorkspaceState) return;
+    const snapshot = await this.workspaceAutosave.load();
+    if (snapshot) this.setWorkspaceSnapshot(snapshot, { external: false });
+  }
+
+  scheduleWorkspaceAutosave() {
+    this.workspaceAutosave?.schedule(this.getWorkspaceSnapshot());
   }
 
   /**
@@ -768,10 +788,12 @@ export default class CodeContainer {
    * @param {object|null} workspaceSnapshot Workspace snapshot to restore.
    * @returns {void}
    */
-  setWorkspaceSnapshot(workspaceSnapshot = null) {
+  setWorkspaceSnapshot(workspaceSnapshot = null, { external = true } = {}) {
     if (!workspaceSnapshot) {
       return;
     }
+
+    if (external) this.hasExternalWorkspaceState = true;
 
     if (this._editorManager) {
       this._editorManager.setWorkspaceSnapshot?.(workspaceSnapshot);
@@ -1006,6 +1028,7 @@ export default class CodeContainer {
    * @returns {void}
    */
   destroy() {
+    this.workspaceAutosave?.destroy?.();
     this._runtime?.stop?.();
 
     if (this.fullscreen && typeof this.unsetFullscreen === 'function') {
