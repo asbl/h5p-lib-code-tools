@@ -61,9 +61,17 @@ export function buildPackageToolbox(
     return toolbox;
   }
 
-  const managerMap = new Map(
-    packageManagers.map((manager) => [manager.getPackageName(), manager])
-  );
+  const managerMap = new Map();
+  packageManagers.forEach((manager) => {
+    const managerPackageNames = typeof manager.getPackageNames === 'function'
+      ? manager.getPackageNames()
+      : [manager.getPackageName()];
+
+    (Array.isArray(managerPackageNames) ? managerPackageNames : [managerPackageNames])
+      .map((name) => String(name || '').trim().toLowerCase())
+      .filter(Boolean)
+      .forEach((packageName) => managerMap.set(packageName, manager));
+  });
 
   const selectedPackages = [
     ...new Set(

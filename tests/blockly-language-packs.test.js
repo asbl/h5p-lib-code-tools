@@ -302,6 +302,24 @@ describe('buildPackageToolbox', () => {
     ]);
   });
 
+  it('adds Miniworlds categories only for Miniworlds package variants', () => {
+    ['miniworlds-data', 'miniworlds-robot', 'miniworlds-turtle'].forEach((packageName) => {
+      const packageToolbox = buildPackageToolbox(toolbox, 'python', [packageName], packageManagers);
+
+      expect(packageToolbox.contents.filter((category) => (
+        ['Miniworlds', 'World', 'Actor'].includes(category.name)
+      )).map((category) => category.name)).toEqual([
+        'Miniworlds',
+        'World',
+        'Actor',
+      ]);
+    });
+
+    expect(buildPackageToolbox(toolbox, 'python', ['numpy'], packageManagers).contents.some((category) => (
+      ['Miniworlds', 'World', 'Actor'].includes(category.name)
+    ))).toBe(false);
+  });
+
   it('registers Blockly block types required by the Matplotlib category', () => {
     buildPackageToolbox(toolbox, 'python', ['matplotlib'], packageManagers);
 

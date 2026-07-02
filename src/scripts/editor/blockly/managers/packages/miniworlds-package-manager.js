@@ -82,6 +82,19 @@ export default class MiniworldsPackageManager {
   }
 
   /**
+   * Returns all package identifiers that should expose Miniworlds blocks.
+   * @returns {string[]} Package names.
+   */
+  getPackageNames() {
+    return [
+      'miniworlds',
+      'miniworlds-data',
+      'miniworlds-robot',
+      'miniworlds-turtle',
+    ];
+  }
+
+  /**
    * Indicates whether this manager is relevant for the language.
    * @param {string} codingLanguage Current coding language.
    * @returns {boolean} True if package blocks are supported.
