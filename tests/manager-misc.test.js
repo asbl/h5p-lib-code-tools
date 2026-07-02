@@ -569,6 +569,51 @@ describe('EditorManager', () => {
     expect(BlocklyEditorInstanceMock).not.toHaveBeenCalled();
   });
 
+  it('uses a registered custom editor factory for custom editor modes', async () => {
+    const onChange = vi.fn();
+    const customInstances = [];
+    const CustomEditor = vi.fn().mockImplementation((target, content, language, options = {}) => {
+      const instance = {
+        target,
+        content,
+        language,
+        options,
+        code: 'SELECT * FROM R;',
+        templateCode: content,
+        getCode: vi.fn(() => instance.code),
+        getTemplateCode: vi.fn(() => instance.templateCode),
+        setCode: vi.fn((code) => { instance.templateCode = code; }),
+        destroy: vi.fn(),
+        setFixedLines: vi.fn(),
+        restoreDynamicHeight: vi.fn(),
+        setTheme: vi.fn(),
+      };
+      customInstances.push(instance);
+      return instance;
+    });
+
+    const manager = new EditorManager(
+      '\\sigma_{x=1}(R)', 'sql', '', '', true, 5, 'editor', 'pre', 'post',
+      onChange, vi.fn(), 'light',
+      { editorMode: 'relalg', editorFactories: { relalg: CustomEditor } },
+    );
+    manager.getDOM();
+    await manager.setupEditors();
+
+    expect(manager.editorMode).toBe('relalg');
+    expect(CustomEditor).toHaveBeenCalledTimes(1);
+    expect(CodeMirrorInstanceMock).not.toHaveBeenCalled();
+    expect(BlocklyEditorInstanceMock).not.toHaveBeenCalled();
+    expect(ensureCodeMirrorRuntimeMock).not.toHaveBeenCalled();
+    expect(manager.getCode()).toBe('SELECT * FROM R;');
+
+    customInstances[0].templateCode = '\\pi_{a}(R)';
+    customInstances[0].options.onChangeCallback();
+
+    expect(manager.getWorkspaceSnapshot().files[0].code).toBe('\\pi_{a}(R)');
+    expect(onChange).toHaveBeenCalledWith('SELECT * FROM R;');
+  });
+
   it('passes blocklyCategories through to BlocklyEditorInstance', async () => {
     const categories = { variables: true, logic: true, loops: false, math: false, text: true, lists: false, functions: false };
     const manager = new EditorManager(

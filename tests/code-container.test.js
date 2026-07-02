@@ -434,6 +434,19 @@ describe('CodeContainer theme toggle', () => {
     expect(getPyodidePackages).not.toHaveBeenCalled();
   });
 
+  it('passes custom editor factories through to the editor manager', () => {
+    const container = createContainer();
+    const relalgFactory = class {};
+
+    const editorManager = container.getEditorManager(container.parent, {
+      editorMode: 'relalg',
+      editorFactories: { relalg: relalgFactory },
+    });
+
+    expect(editorManager.editorMode).toBe('relalg');
+    expect(editorManager.editorFactories.relalg).toBe(relalgFactory);
+  });
+
   it('falls back to legacy packages option when blocklyPackages is missing', () => {
     const container = createContainer();
 

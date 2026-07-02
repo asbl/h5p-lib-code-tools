@@ -8,10 +8,13 @@ import { BlocklyProjectContextBuilder } from '../editor/blockly/project-symbols.
 
 /**
  * Supported editor mode identifiers.
- * - 'code'   → CodeMirror (default)
- * - 'blocks' → Blockly workspace only
- * - 'both'   → Blockly workspace + read-only generated-code preview
+ * - 'code'        → CodeMirror (default)
+ * - 'blocks'      → Blockly workspace only
+ * - 'both'        → Blockly workspace + read-only generated-code preview
  * - 'fill-blanks' → Inline code template with editable blanks
+ *
+ * Modes beyond the core set are resolved via `workspaceOptions.editorFactories`
+ * (e.g. the relational-algebra editor injected by SQLQuestion).
  */
 const EDITOR_MODES = ['code', 'blocks', 'both', 'fill-blanks'];
 
@@ -99,9 +102,19 @@ export default class EditorManager {
     this._defaultWorkspace = this.createDefaultWorkspace();
     this._workspace = this.cloneWorkspace(this._defaultWorkspace);
 
-    // Editor mode: 'code' | 'blocks' | 'both'
-    this.editorMode = EDITOR_MODES.includes(workspaceOptions?.editorMode)
-      ? workspaceOptions.editorMode
+    // Content-type-specific editor factories (e.g. relational algebra).
+    // Each entry maps an editorMode to a class implementing the EditorAdapter
+    // interface. Core modes are handled internally; custom modes fall back here.
+    this.editorFactories = (workspaceOptions?.editorFactories && typeof workspaceOptions.editorFactories === 'object')
+      ? workspaceOptions.editorFactories
+      : {};
+
+    // Editor mode: accept core modes and factory-registered custom modes;
+    // unknown values fall back to 'code' (preserves backward compatibility).
+    const requestedMode = workspaceOptions?.editorMode;
+    this.editorMode = (typeof requestedMode === 'string'
+      && (EDITOR_MODES.includes(requestedMode) || this.editorFactories[requestedMode]))
+      ? requestedMode
       : 'code';
 
     // Per-language category selection for Blockly (null = full toolbox).
@@ -149,7 +162,9 @@ export default class EditorManager {
       await ensureBlocklyRuntime(this.blocklyCdnUrl);
     }
 
-    const needsCodeMirror = this.editorMode !== 'blocks' && this.editorMode !== 'fill-blanks';
+    const needsCodeMirror = this.editorMode !== 'blocks'
+      && this.editorMode !== 'fill-blanks'
+      && !this.isCustomEditorMode();
     const hasStaticSecondaryFiles = (this.editorMode === 'blocks' || this.editorMode === 'both')
       && this.hasAdditionalSourceFiles();
     if (needsCodeMirror || hasStaticSecondaryFiles) {
@@ -158,6 +173,10 @@ export default class EditorManager {
 
     this.renderFileTabs();
     this.mountEditorForActiveFile();
+  }
+
+  isCustomEditorMode() {
+    return Boolean(this.editorFactories[this.editorMode]);
   }
 
   getDOM() {
@@ -210,6 +229,15 @@ export default class EditorManager {
    */
   getCode() {
     this.persistActiveFileCode();
+    const activeFile = this.getActiveFile();
+    const entryFile = this.findWorkspaceFile(this.workspaceOptions.entryFileName);
+
+    if (this.isCustomEditorMode()
+      && activeFile?.name === entryFile?.name
+      && typeof this._editorInstance?.getCode === 'function') {
+      return `${this.getNormalizedPreCode()}${this._editorInstance.getCode()}${this.getNormalizedPostCode()}`;
+    }
+
     return this.getFileCode(this.workspaceOptions.entryFileName, {
       includeFixedCode: true,
     });
@@ -947,6 +975,24 @@ export default class EditorManager {
           blocklyPackages: this.blocklyPackages,
           codeContainer: this.codeContainer,
           blocklyContext: this.buildBlocklyContext(activeFile),
+        }
+      );
+    }
+    else if (this.isCustomEditorMode()) {
+      // Content-type-specific editor (e.g. relational algebra). The factory is
+      // injected via workspaceOptions.editorFactories; activeFile.code holds the
+      // editor-native representation (LaTeX) rather than executable code.
+      const EditorClass = this.editorFactories[this.editorMode];
+      this._editorInstance = new EditorClass(
+        this._editorElement,
+        activeFile.code,
+        this.codingLanguage,
+        {
+          ...sharedOptions,
+          onChangeCallback: () => {
+            activeFile.code = this._editorInstance.getTemplateCode();
+            this.onChangeCallback(this.getCode());
+          },
         }
       );
     }
