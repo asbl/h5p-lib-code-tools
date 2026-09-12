@@ -68,7 +68,7 @@ describe('Markdown mermaid support', () => {
         sanitize: vi.fn((html) => html),
         addHook: vi.fn(),
       },
-      markedAdmonition: { name: 'mock-admonition' },
+      markedAlert: vi.fn(() => ({ name: 'mock-alert' })),
     };
 
     ensureMarkdownRuntime.mockResolvedValue(runtime);

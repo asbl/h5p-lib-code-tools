@@ -3,7 +3,7 @@ import renderMermaidDiagram from './editor/mermaid-diagram';
 import { ensureMarkdownRuntime, getMarkdownRuntime } from './services/markdown-runtime';
 import { createLegacyAdmonitionExtension } from './services/legacy-admonition-extension';
 
-let markdownConfigured = false;
+const configuredMarkedInstances = new WeakSet();
 
 /**
  * Adds presentation hooks to rendered markdown tables.
@@ -65,7 +65,7 @@ export default class Markdown {
 
     const { marked, DOMPurify, markedAlert } = getMarkdownRuntime();
 
-    if (!markdownConfigured) {
+    if (!configuredMarkedInstances.has(marked)) {
       marked.use(createLegacyAdmonitionExtension());
       if (markedAlert) {
         marked.use(markedAlert());
@@ -76,7 +76,7 @@ export default class Markdown {
           node.setAttribute('rel', 'noopener noreferrer');
         }
       });
-      markdownConfigured = true;
+      configuredMarkedInstances.add(marked);
     }
 
     return enhanceTables(DOMPurify.sanitize(marked.parse(this.text)));

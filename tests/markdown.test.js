@@ -117,6 +117,36 @@ describe('Markdown', () => {
     expect(runtime.marked.use).toHaveBeenCalledWith({ name: 'mock-alert' });
   });
 
+  it('configures a second, differently-sourced marked instance even though a first one was already configured', async () => {
+    const firstMarkdown = new Markdown('Use `print()` in your answer.');
+    await firstMarkdown.getHTML();
+
+    const firstRuntime = getMarkdownRuntime();
+    expect(firstRuntime.marked.use).toHaveBeenCalled();
+    expect(firstRuntime.DOMPurify.addHook).toHaveBeenCalled();
+
+    const secondRuntime = {
+      marked: {
+        use: vi.fn(),
+        parse: vi.fn(() => '<p>content from a self-hosted mirror</p>'),
+      },
+      DOMPurify: {
+        sanitize: vi.fn((html) => html),
+        addHook: vi.fn(),
+      },
+      markedAlert: vi.fn(() => ({ name: 'mock-alert' })),
+    };
+
+    ensureMarkdownRuntime.mockResolvedValue(secondRuntime);
+    getMarkdownRuntime.mockReturnValue(secondRuntime);
+
+    const secondMarkdown = new Markdown('Use `print()` in your answer.', { markdownCdnUrl: 'https://mirror.example/' });
+    await secondMarkdown.getHTML();
+
+    expect(secondRuntime.marked.use).toHaveBeenCalled();
+    expect(secondRuntime.DOMPurify.addHook).toHaveBeenCalled();
+  });
+
   it('skips GFM alert registration when a self-hosted runtime does not provide it', async () => {
     vi.resetModules();
 
