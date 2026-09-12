@@ -50,8 +50,9 @@ describe('Markdown', () => {
       },
       DOMPurify: {
         sanitize: vi.fn((html) => html),
+        addHook: vi.fn(),
       },
-      markedAdmonition: { name: 'mock-admonition' },
+      markedAlert: vi.fn(() => ({ name: 'mock-alert' })),
     };
 
     ensureMarkdownRuntime.mockResolvedValue(runtime);
@@ -97,5 +98,63 @@ describe('Markdown', () => {
     expect(table).not.toBeNull();
     expect(wrapper?.contains(table)).toBe(true);
     expect(table?.querySelector('th')?.textContent).toBe('Name');
+  });
+
+  it('registers the first-party legacy admonition extension and the GFM alert plugin', async () => {
+    vi.resetModules();
+    const { default: FreshMarkdown } = await import('../src/scripts/markdown.js');
+
+    const markdown = new FreshMarkdown('Use `print()` in your answer.');
+    await markdown.getMarkdownDiv();
+
+    const runtime = getMarkdownRuntime();
+    expect(runtime.markedAlert).toHaveBeenCalled();
+    expect(runtime.marked.use).toHaveBeenCalledWith(
+      expect.objectContaining({
+        extensions: [expect.objectContaining({ name: 'legacy-admonition', level: 'block' })],
+      })
+    );
+    expect(runtime.marked.use).toHaveBeenCalledWith({ name: 'mock-alert' });
+  });
+
+  it('skips GFM alert registration when a self-hosted runtime does not provide it', async () => {
+    vi.resetModules();
+
+    const runtime = getMarkdownRuntime();
+    delete runtime.markedAlert;
+    ensureMarkdownRuntime.mockResolvedValue(runtime);
+    getMarkdownRuntime.mockReturnValue(runtime);
+
+    const { default: FreshMarkdown } = await import('../src/scripts/markdown.js');
+    const markdown = new FreshMarkdown('Use `print()` in your answer.');
+
+    await expect(markdown.getMarkdownDiv()).resolves.toBeTruthy();
+    expect(runtime.marked.use).toHaveBeenCalledWith(
+      expect.objectContaining({
+        extensions: [expect.objectContaining({ name: 'legacy-admonition' })],
+      })
+    );
+    expect(runtime.marked.use).not.toHaveBeenCalledWith(expect.objectContaining({ name: 'mock-alert' }));
+  });
+
+  it('opens rendered links in a new tab via a DOMPurify hook', async () => {
+    vi.resetModules();
+    const { default: FreshMarkdown } = await import('../src/scripts/markdown.js');
+
+    const markdown = new FreshMarkdown('[Python-Kurs](https://example.com/python-kurs)');
+    await markdown.getMarkdownDiv();
+
+    expect(getMarkdownRuntime().DOMPurify.addHook).toHaveBeenCalledWith(
+      'afterSanitizeAttributes',
+      expect.any(Function)
+    );
+
+    const hookCallback = getMarkdownRuntime().DOMPurify.addHook.mock.calls[0][1];
+    const link = document.createElement('a');
+    link.setAttribute('href', 'https://example.com/python-kurs');
+    hookCallback(link);
+
+    expect(link.getAttribute('target')).toBe('_blank');
+    expect(link.getAttribute('rel')).toBe('noopener noreferrer');
   });
 });

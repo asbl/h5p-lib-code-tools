@@ -5,6 +5,8 @@ export const COMMON_EXTERNAL_LIBRARY_URL_KEYS = {
   codemirrorcdnurl: 'codeMirrorCdnUrl',
   markdown: 'markdownCdnUrl',
   markdowncdnurl: 'markdownCdnUrl',
+  mermaid: 'mermaidCdnUrl',
+  mermaidcdnurl: 'mermaidCdnUrl',
   fontawesome: 'fontAwesomeCdnUrl',
   fontawesomecdnurl: 'fontAwesomeCdnUrl',
   sweetalert: 'sweetAlertCdnUrl',

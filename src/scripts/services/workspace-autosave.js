@@ -31,8 +31,14 @@ export default class WorkspaceAutosave {
       const db = await this.open();
       await this.request(db.transaction(this.storeName, 'readwrite').objectStore(this.storeName).put(entry));
       db.close();
-    } catch {
-      try { localStorage.setItem(this.fallbackKey, JSON.stringify(entry)); } catch { /* storage unavailable */ }
+    }
+    catch {
+      try {
+        localStorage.setItem(this.fallbackKey, JSON.stringify(entry));
+      }
+      catch {
+        // Storage unavailable.
+      }
     }
   }
 
@@ -43,8 +49,14 @@ export default class WorkspaceAutosave {
       const entry = await this.request(db.transaction(this.storeName, 'readonly').objectStore(this.storeName).get(this.key));
       db.close();
       return entry?.snapshot || null;
-    } catch {
-      try { return JSON.parse(localStorage.getItem(this.fallbackKey) || 'null')?.snapshot || null; } catch { return null; }
+    }
+    catch {
+      try {
+        return JSON.parse(localStorage.getItem(this.fallbackKey) || 'null')?.snapshot || null;
+      }
+      catch {
+        return null;
+      }
     }
   }
 

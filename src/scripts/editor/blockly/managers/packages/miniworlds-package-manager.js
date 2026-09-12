@@ -693,7 +693,7 @@ export default class MiniworldsPackageManager {
         this.appendValueInput('DELAY').setCheck('Number').appendField('nach Millisekunden');
         this.appendStatementInput('BODY').appendField('mache');
         this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(MINIWORLDS_CATEGORY_COLOUR);
-      }};
+      } };
     }
 
     if (!Blockly.Blocks.miniworlds_actor_event_key) {
@@ -702,14 +702,14 @@ export default class MiniworldsPackageManager {
           .appendField(new Blockly.FieldDropdown([['Taste gedrückt', 'on_key_down'], ['Taste gehalten', 'on_key_pressed']]), 'EVENT')
           .appendField(new Blockly.FieldDropdown([['↑', 'up'], ['↓', 'down'], ['←', 'left'], ['→', 'right'], ['w', 'w'], ['a', 'a'], ['s', 's'], ['d', 'd'], ['Leertaste', 'space']]), 'KEY');
         this.appendStatementInput('BODY').appendField('mache'); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(MINIWORLDS_CATEGORY_COLOUR);
-      }};
+      } };
     }
     if (!Blockly.Blocks.miniworlds_actor_event_mouse) {
       Blockly.Blocks.miniworlds_actor_event_mouse = { init() {
         this.appendDummyInput().appendField('Actor').appendField(objectDropdown('ACTOR_VAR', 'player'), 'ACTOR_VAR')
           .appendField(new Blockly.FieldDropdown([['linke Maustaste', 'on_mouse_left_down'], ['Maus losgelassen', 'on_mouse_left_released'], ['Maus bewegt', 'on_mouse_motion']]), 'EVENT');
         this.appendStatementInput('BODY').appendField('mache'); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(MINIWORLDS_CATEGORY_COLOUR);
-      }};
+      } };
     }
 
     if (!pythonGenerator.forBlock.miniworlds_import_core) {
@@ -817,7 +817,7 @@ export default class MiniworldsPackageManager {
     pythonGenerator.forBlock.miniworlds_create_circle ||= (block, generator) => `${actor(block)} = Circle((${value(block, generator, 'X', '0')}, ${value(block, generator, 'Y', '0')}), ${value(block, generator, 'RADIUS', '20')})\n`;
     pythonGenerator.forBlock.miniworlds_create_rectangle ||= (block, generator) => `${actor(block)} = Rectangle((${value(block, generator, 'X', '0')}, ${value(block, generator, 'Y', '0')}), ${value(block, generator, 'WIDTH', '20')}, ${value(block, generator, 'HEIGHT', '20')})\n`;
     pythonGenerator.forBlock.miniworlds_create_tiled_world ||= (block, generator) => `${sanitizePythonIdentifier(block.getFieldValue('WORLD_VAR'), 'world')} = TiledWorld(${value(block, generator, 'COLUMNS', '10')}, ${value(block, generator, 'ROWS', '10')})\n`;
-    pythonGenerator.forBlock.miniworlds_play_sound ||= (block, generator) => `${sanitizePythonIdentifier(block.getFieldValue('WORLD_VAR'), 'world')}.sound.play(${value(block, generator, 'PATH', "'sound.wav'")})\n`;
+    pythonGenerator.forBlock.miniworlds_play_sound ||= (block, generator) => `${sanitizePythonIdentifier(block.getFieldValue('WORLD_VAR'), 'world')}.sound.play(${value(block, generator, 'PATH', '\'sound.wav\'')})\n`;
     pythonGenerator.forBlock.miniworlds_actor_set_costume_option ||= (block) => `${actor(block)}.costume.${sanitizePythonIdentifier(block.getFieldValue('OPTION'), 'is_rotatable')} = ${block.getFieldValue('VALUE') === 'True' ? 'True' : 'False'}\n`;
     pythonGenerator.forBlock.miniworlds_actor_set_costume_index ||= (block, generator) => `${actor(block)}.costume_number = ${value(block, generator, 'INDEX', '0')}\n`;
     pythonGenerator.forBlock.miniworlds_after_delay ||= (block, generator) => {

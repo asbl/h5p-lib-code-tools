@@ -89,8 +89,8 @@ describe('runtime and config service classes', () => {
   it('loads markdown runtime modules through overrideable import hooks', async () => {
     class TestMarkdownRuntimeLoader extends MarkdownRuntimeLoader {
       async importModule(specifier) {
-        if (specifier.includes('admonition')) {
-          return { default: { name: 'admonition' } };
+        if (specifier.includes('alert')) {
+          return { default: { name: 'alert' } };
         }
 
         if (specifier.includes('marked')) {
@@ -111,7 +111,7 @@ describe('runtime and config service classes', () => {
     await expect(loader.ensure('https://cdn.example.test/markdown')).resolves.toEqual({
       marked: { name: 'marked' },
       DOMPurify: { name: 'dompurify' },
-      markedAdmonition: { name: 'admonition' },
+      markedAlert: { name: 'alert' },
     });
     expect(loader.get()).toBe(state.runtime);
 
@@ -126,7 +126,7 @@ describe('runtime and config service classes', () => {
         return {
           marked: { bundle: 'marked' },
           DOMPurify: { bundle: 'dompurify' },
-          markedAdmonition: { bundle: 'admonition' },
+          markedAlert: { bundle: 'alert' },
         };
       }
     }
@@ -136,7 +136,7 @@ describe('runtime and config service classes', () => {
     await expect(loader.ensure('https://cdn.example.test/markdown-runtime.js')).resolves.toEqual({
       marked: { bundle: 'marked' },
       DOMPurify: { bundle: 'dompurify' },
-      markedAdmonition: { bundle: 'admonition' },
+      markedAlert: { bundle: 'alert' },
     });
   });
 

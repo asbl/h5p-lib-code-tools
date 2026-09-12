@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Mermaid renderer live test</title>
+  <style>
+    .h5p-markdown-mermaid {
+      margin: 1rem 0;
+      padding: 1rem;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+      background: #fff;
+    }
+    .h5p-markdown-mermaid--error { background: #fff5f5; border-color: rgba(220, 38, 38, 0.3); }
+    .h5p-markdown-mermaid__error { color: #dc2626; font-size: 0.85em; }
+  </style>
+</head>
+<body>
+  <div id="target"></div>
+  <script type="module">
+    import { renderMermaidDiagram } from './mermaid-test-harness.js';
+
+    const target = document.getElementById('target');
+    const results = window.__mermaidResults = { cases: [] };
+
+    async function runCase(name, code, options) {
+      const container = await renderMermaidDiagram(code, 'mermaid', options);
+      target.appendChild(container);
+      const svg = container.querySelector('svg');
+      results.cases.push({
+        name,
+        code,
+        className: container.className,
+        hasSvg: !!svg,
+        hasError: container.classList.contains('h5p-markdown-mermaid--error'),
+        errorText: container.querySelector('.h5p-markdown-mermaid__error')?.textContent || null,
+      });
+    }
+
+    (async () => {
+      try {
+        await runCase('flowchart', 'graph TD;\n    A-->B;\n    A-->C;\n    B-->D;\n    C-->D;', {});
+        await runCase('sequence', 'sequenceDiagram\n    participant A\n    participant B\n    A->>B: Hello', {});
+        await runCase('invalid', 'this is not mermaid', {});
+      } catch (err) {
+        results.fatalError = String(err && err.stack || err);
+      }
+      results.done = true;
+    })();
+  </script>
+</body>
+</html>

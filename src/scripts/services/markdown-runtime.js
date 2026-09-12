@@ -2,7 +2,7 @@ export const DEFAULT_MARKDOWN_CDN_URL = 'https://esm.sh/';
 
 const MARKED_SPECIFIER = 'marked@9.1.6';
 const DOMPURIFY_SPECIFIER = 'dompurify@3.0.6';
-const MARKED_ADMONITION_SPECIFIER = 'marked-admonition-extension@0.0.4';
+const MARKED_ALERT_SPECIFIER = 'marked-alert@2.1.2';
 
 const sharedState = {
   loadPromise: null,
@@ -116,21 +116,21 @@ export class MarkdownRuntimeLoader {
       this.state.runtime = {
         marked: runtimeModule.marked,
         DOMPurify: runtimeModule.DOMPurify,
-        markedAdmonition: runtimeModule.markedAdmonition,
+        markedAlert: runtimeModule.markedAlert,
       };
       return this.state.runtime;
     }
 
-    const [markedModule, domPurifyModule, admonitionModule] = await Promise.all([
+    const [markedModule, domPurifyModule, alertModule] = await Promise.all([
       this.importModule(`${source.baseUrl}${MARKED_SPECIFIER}`),
       this.importModule(`${source.baseUrl}${DOMPURIFY_SPECIFIER}`),
-      this.importModule(`${source.baseUrl}${MARKED_ADMONITION_SPECIFIER}`),
+      this.importModule(`${source.baseUrl}${MARKED_ALERT_SPECIFIER}`),
     ]);
 
     this.state.runtime = {
       marked: markedModule.marked,
       DOMPurify: domPurifyModule.default,
-      markedAdmonition: admonitionModule.default,
+      markedAlert: alertModule.default,
     };
 
     return this.state.runtime;

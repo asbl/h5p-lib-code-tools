@@ -419,6 +419,18 @@ describe('CodeContainer theme toggle', () => {
     expect(showPage).toHaveBeenCalledWith('files');
   });
 
+  it('creates the editor from stored options when reading a workspace snapshot', () => {
+    const resizeActionHandler = vi.fn();
+    const container = createContainer({
+      code: 'print("ok")',
+      resizeActionHandler,
+      editorMode: 'code',
+    });
+
+    expect(() => container.getWorkspaceSnapshot()).not.toThrow();
+    expect(container.getWorkspaceSnapshot()?.files?.[0]?.code).toBe('print("ok")');
+  });
+
   it('resolves blockly packages from explicit blocklyPackages option', () => {
     const getPyodidePackages = vi.fn(() => ['numpy']);
     const container = createContainer({

@@ -1,6 +1,7 @@
-import 'marked-admonition-extension/dist/index.css';
 import renderReadonlyCodeBlock from './editor/readonly-code-block';
+import renderMermaidDiagram from './editor/mermaid-diagram';
 import { ensureMarkdownRuntime, getMarkdownRuntime } from './services/markdown-runtime';
+import { createLegacyAdmonitionExtension } from './services/legacy-admonition-extension';
 
 let markdownConfigured = false;
 
@@ -62,10 +63,19 @@ export default class Markdown {
   async getHTML() {
     await ensureMarkdownRuntime(this.options?.markdownCdnUrl || '');
 
-    const { marked, DOMPurify, markedAdmonition } = getMarkdownRuntime();
+    const { marked, DOMPurify, markedAlert } = getMarkdownRuntime();
 
     if (!markdownConfigured) {
-      marked.use(markedAdmonition);
+      marked.use(createLegacyAdmonitionExtension());
+      if (markedAlert) {
+        marked.use(markedAlert());
+      }
+      DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+        if (node.tagName === 'A') {
+          node.setAttribute('target', '_blank');
+          node.setAttribute('rel', 'noopener noreferrer');
+        }
+      });
       markdownConfigured = true;
     }
 
@@ -83,9 +93,24 @@ export default class Markdown {
     mdDiv.innerHTML = await this.getHTML();
     const replacements = Array.from(mdDiv.querySelectorAll('pre code')).map(async (el) => {
       const preElement = el.parentElement;
+      const language = getCodeLanguage(el);
+
+      if (language.toLowerCase() === 'mermaid') {
+        const diagram = await renderMermaidDiagram(
+          el.textContent || '',
+          language,
+          {
+            theme: 'light',
+            mermaidCdnUrl: this.options?.mermaidCdnUrl || '',
+          }
+        );
+        preElement?.replaceWith(diagram);
+        return;
+      }
+
       const codeBlock = await renderReadonlyCodeBlock(
         el.textContent || '',
-        getCodeLanguage(el),
+        language,
         {
           theme: 'light',
           codeMirrorCdnUrl: this.options?.codeMirrorCdnUrl || '',

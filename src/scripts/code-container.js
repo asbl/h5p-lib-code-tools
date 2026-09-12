@@ -251,7 +251,7 @@ export default class CodeContainer {
     return language ? `${language}-project.zip` : 'code-project.zip';
   }
 
-  getEditorManager(parent, options) {
+  getEditorManager(parent, options = this.options || {}) {
     if (!this._editorManager) {
       const blocklyPackages = this.resolveBlocklyPackages(options);
 
@@ -269,7 +269,7 @@ export default class CodeContainer {
           this.scheduleWorkspaceAutosave();
           (options?.onChangeCallback || (() => { }))(code);
         },
-        options.resizeActionHandler,
+        options?.resizeActionHandler,
         this.getTheme(),
         {
           enabled: options?.projectStorageEnabled === true,
