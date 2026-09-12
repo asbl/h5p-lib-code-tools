@@ -132,6 +132,56 @@ describe('ButtonManager', () => {
     expect(manager.getButton('runButton')?.style.display).toBe('block');
     expect(manager.getButton('runButton')?.style.visibility).toBe('visible');
   });
+
+  it('creates no buttons when configured empty', async () => {
+    const manager = new ButtonManager(document.createElement('div'), true, {}, undefined, true);
+
+    await manager.setupButtons();
+
+    expect(manager.getDOM().children).toHaveLength(0);
+  });
+
+  it('does not create buttons when hasButtons is false', async () => {
+    const manager = new ButtonManager(document.createElement('div'), false, {
+      run: 'Run', stop: 'Stop', showCode: 'Code', save: 'Save', load: 'Load',
+    });
+
+    await manager.setupButtons();
+    expect(manager.addButton({ identifier: 'extra', label: 'Extra', class: 'extra' })).toBeUndefined();
+    expect(manager.getDOM().children).toHaveLength(0);
+  });
+
+  it('falls back to a humanized aria-label for icon-only buttons without an explicit one', () => {
+    const manager = new ButtonManager(document.createElement('div'), true, {});
+
+    const button = manager.addButton({
+      identifier: 'runButton',
+      name: 'run_button',
+      label: '',
+      class: 'run_code',
+      icon: 'fa-solid fa-play',
+    });
+
+    expect(button.getAttribute('aria-label')).toBe('run button');
+  });
+
+  it('clears the active state from all buttons', async () => {
+    const manager = new ButtonManager(document.createElement('div'), true, {
+      run: 'Run', stop: 'Stop', showCode: 'Code', save: 'Save', load: 'Load',
+    });
+
+    await manager.setupButtons();
+    manager.setActive('runButton');
+    manager.clearActiveButton();
+
+    expect(manager.isButtonActive('runButton')).toBe(false);
+    expect(manager.getButton('runButton').classList.contains('active')).toBe(false);
+  });
+
+  it('reports HTML classes based on whether buttons are enabled', () => {
+    expect(new ButtonManager(document.createElement('div'), true, {}).getHTMLClasses()).toBe('has_buttons');
+    expect(new ButtonManager(document.createElement('div'), false, {}).getHTMLClasses()).toBe('not_has_buttons');
+  });
 });
 
 describe('PageManager', () => {
@@ -165,5 +215,89 @@ describe('PageManager', () => {
     await manager.setupPages();
 
     expect(() => manager.addPage('code', '', 'code')).toThrow('Page \'code\' is already registered.');
+  });
+
+  it('registers no default pages when created empty', async () => {
+    const manager = new PageManager(document.createElement('div'), {}, vi.fn(), true);
+
+    await manager.setupPages();
+
+    expect(manager.getDOM().children).toHaveLength(0);
+  });
+
+  it('reports inactive for a page that does not exist', async () => {
+    const manager = new PageManager(document.createElement('div'), {}, vi.fn());
+
+    await manager.setupPages();
+
+    expect(manager.pageIsActive('does-not-exist')).toBe(false);
+  });
+
+  it('returns null and warns when a requested page does not exist', () => {
+    const manager = new PageManager(document.createElement('div'), {}, vi.fn());
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    expect(manager.getPage('does-not-exist')).toBeNull();
+    expect(warn).toHaveBeenCalled();
+
+    warn.mockRestore();
+  });
+
+  it('inserts a page before others when registered as front', async () => {
+    const manager = new PageManager(document.createElement('div'), {}, vi.fn());
+
+    await manager.setupPages();
+    manager.addPage('files', document.createElement('div'), 'files', true);
+
+    expect(manager.pages.map((page) => page.name)).toEqual(['files', 'code']);
+  });
+
+  it('replaces existing page content with a string or a DocumentFragment', async () => {
+    const manager = new PageManager(document.createElement('div'), {}, vi.fn());
+
+    await manager.setupPages();
+    manager.setContent('code', '<span>first</span>');
+    expect(manager.getPage('code').innerHTML).toBe('<span>first</span>');
+
+    const fragment = document.createDocumentFragment();
+    fragment.appendChild(document.createElement('em'));
+    manager.setContent('code', fragment);
+    expect(manager.getPage('code').innerHTML).toBe('<em></em>');
+  });
+
+  it('creates a new page through setContent when it does not exist yet', () => {
+    const manager = new PageManager(document.createElement('div'), {}, vi.fn());
+
+    manager.setContent('log', 'hello');
+
+    expect(manager.getPage('log').innerHTML).toBe('<div>hello</div>');
+  });
+
+  it('throws for unsupported setContent payloads', async () => {
+    const manager = new PageManager(document.createElement('div'), {}, vi.fn());
+
+    await manager.setupPages();
+
+    expect(() => manager.setContent('code', 42)).toThrow(TypeError);
+  });
+
+  it('appends HTML to existing page content via addContent', async () => {
+    const manager = new PageManager(document.createElement('div'), {}, vi.fn());
+
+    await manager.setupPages();
+    manager.setContent('code', '<span>a</span>');
+    manager.addContent('code', '<span>b</span>');
+
+    expect(manager.getPage('code').innerHTML).toBe('<span>a</span><span>b</span>');
+  });
+
+  it('creates the target page on demand when appending a child element', () => {
+    const resizeActionHandler = vi.fn();
+    const manager = new PageManager(document.createElement('div'), {}, resizeActionHandler);
+
+    manager.appendChild('files', document.createElement('span'));
+
+    expect(manager.getPageObj('files')).toBeDefined();
+    expect(resizeActionHandler).toHaveBeenCalled();
   });
 });

@@ -256,7 +256,7 @@ export default class PageManager {
 
   pageIsActive(pageName) {
     const page = this.getPageConfig(pageName);
-    return !!page.active;
+    return !!page?.active;
   }
 
   /**

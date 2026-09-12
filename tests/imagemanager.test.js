@@ -131,4 +131,68 @@ describe('SoundManager', () => {
     expect(manager.getDOM().textContent).toContain('sounds/zelda.wav');
     expect(manager.getDOM().textContent).toContain('h5p_sounds["zelda.wav"]["path"]');
   });
+
+  it('exposes the runtime variable name and relative access path', () => {
+    expect(SoundManager.variableName).toBe('h5p_sounds');
+    expect(SoundManager.getRelativeAccessPath('zelda.wav')).toBe('sounds/zelda.wav');
+  });
+
+  it('creates an audio preview element for an uploaded sound', async () => {
+    const resizeActionHandler = vi.fn();
+    const manager = new SoundManager({}, {
+      enabled: true,
+      l10n: {
+        soundsTitle: 'Uploaded sounds',
+        soundsDescription: 'Upload sounds',
+        soundsHelp: 'Help text',
+        soundsUpload: 'Upload sounds',
+        soundsEmpty: 'No sounds uploaded yet.',
+        soundsFileName: 'File name',
+        soundsRenameAriaLabel: 'Edit uploaded sound file name',
+        soundsRemove: 'Remove',
+        soundsDefaultName: 'sound',
+      },
+      resizeActionHandler,
+    });
+
+    await manager.addFiles([createImageFile('zelda.wav', 'first', 'audio/wav')]);
+    const [sound] = manager.getSounds();
+    const preview = manager.createPreview(sound);
+    const audio = preview.querySelector('audio.sound-manager__audio');
+
+    expect(audio.src).toBe(sound.objectUrl);
+    expect(audio.getAttribute('aria-label')).toBe('zelda.wav');
+    expect(audio.controls).toBe(true);
+
+    audio.dispatchEvent(new Event('loadedmetadata'));
+    expect(resizeActionHandler).toHaveBeenCalled();
+  });
+
+  it('delegates rename/find/remove to the shared FileManager implementation', async () => {
+    const manager = new SoundManager({}, {
+      enabled: true,
+      l10n: {
+        soundsTitle: 'Uploaded sounds',
+        soundsDescription: 'Upload sounds',
+        soundsHelp: 'Help text',
+        soundsUpload: 'Upload sounds',
+        soundsEmpty: 'No sounds uploaded yet.',
+        soundsFileName: 'File name',
+        soundsRenameAriaLabel: 'Edit uploaded sound file name',
+        soundsRemove: 'Remove',
+        soundsDefaultName: 'sound',
+      },
+      resizeActionHandler: vi.fn(),
+    });
+
+    await manager.addFiles([createImageFile('zelda.wav', 'first', 'audio/wav')]);
+    const [sound] = manager.getSounds();
+
+    manager.renameSound(sound.id, 'link');
+    expect(manager.findSound(sound.id).name).toBe('link.wav');
+
+    manager.removeSound(sound.id);
+    expect(manager.findSound(sound.id)).toBeUndefined();
+    expect(manager.getSounds()).toHaveLength(0);
+  });
 });

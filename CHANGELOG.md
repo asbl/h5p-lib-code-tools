@@ -36,6 +36,16 @@ bumped.
   consulted when mounting an editor, so any custom `editorMode` silently
   fell back to `code`. Replaced by the `registerCodeEditorFactory` registry
   above.
+- `PageManager.pageIsActive()` threw when called with a page name that was
+  never registered, instead of returning `false` like the sibling `isEmpty()`
+  method.
+
+### Tests
+
+- Added coverage for `ButtonManager`, `PageManager`, `CanvasManager` and
+  `SoundManager` branches that had no test (empty/disabled managers,
+  front-inserted pages, missing-page lookups, `hasVisibleCanvas()` edge
+  cases, and `SoundManager`'s own preview/rename/find/remove behavior).
 
 ## [6.94.0]
 

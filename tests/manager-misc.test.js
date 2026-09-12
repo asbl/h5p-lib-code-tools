@@ -797,6 +797,45 @@ describe('CanvasManager', () => {
     expect(page.contains(secondWrapper)).toBe(true);
     expect(manager.canvasWrapper).toBe(secondWrapper);
   });
+
+  it('reports no visible canvas before any canvas has been added', () => {
+    const pageManager = { appendChild: vi.fn(), getPage: vi.fn(), showPage: vi.fn() };
+    const manager = new CanvasManager(true, pageManager, {});
+
+    expect(manager.hasVisibleCanvas()).toBe(false);
+    expect(pageManager.getPage).not.toHaveBeenCalled();
+  });
+
+  it('reports no visible canvas when its content is empty', () => {
+    const canvasWrapper = document.createElement('div');
+    canvasWrapper.className = 'canvas-wrapper';
+    const emptyChild = document.createElement('div');
+    canvasWrapper.appendChild(emptyChild);
+
+    const page = document.createElement('div');
+    page.appendChild(canvasWrapper);
+
+    const pageManager = {
+      appendChild: vi.fn(),
+      getPage: vi.fn(() => page),
+      showPage: vi.fn(),
+    };
+
+    const manager = new CanvasManager(true, pageManager, {});
+    manager.addCanvas(canvasWrapper);
+
+    expect(manager.hasVisibleCanvas()).toBe(false);
+  });
+
+  it('does nothing when showing or removing a canvas that was never added', () => {
+    const pageManager = { appendChild: vi.fn(), getPage: vi.fn(), showPage: vi.fn() };
+    const manager = new CanvasManager(true, pageManager, {});
+
+    expect(() => manager.removeCanvas()).not.toThrow();
+    manager.showCanvas();
+
+    expect(pageManager.showPage).not.toHaveBeenCalled();
+  });
 });
 
 describe('InstructionsManager', () => {
