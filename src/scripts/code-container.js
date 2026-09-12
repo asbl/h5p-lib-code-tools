@@ -279,7 +279,6 @@ export default class CodeContainer {
           codeMirrorCdnUrl: options?.codeMirrorCdnUrl || '',
           sourceFiles: Array.isArray(options?.sourceFiles) ? options.sourceFiles : [],
           editorMode: options?.editorMode || 'code',
-          editorFactories: options?.editorFactories || {},
           blocklyCategories: options?.blocklyCategories ?? null,
           blocklyWorkspaceState: options?.blocklyWorkspaceState ?? null,
           blocklyPackages,

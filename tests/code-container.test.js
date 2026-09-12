@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import CodeContainer from '../src/scripts/code-container.js';
+import { registerCodeEditorFactory, resetCodeEditorFactories } from '../src/scripts/editor/code-editor-factories.js';
 
 /**
  * Creates a CodeContainer test instance.
@@ -446,17 +447,20 @@ describe('CodeContainer theme toggle', () => {
     expect(getPyodidePackages).not.toHaveBeenCalled();
   });
 
-  it('passes custom editor factories through to the editor manager', () => {
-    const container = createContainer();
-    const relalgFactory = class {};
+  it('resolves an editor mode registered via registerCodeEditorFactory', () => {
+    registerCodeEditorFactory('relalg', class {});
 
-    const editorManager = container.getEditorManager(container.parent, {
-      editorMode: 'relalg',
-      editorFactories: { relalg: relalgFactory },
-    });
+    try {
+      const container = createContainer();
+      const editorManager = container.getEditorManager(container.parent, {
+        editorMode: 'relalg',
+      });
 
-    expect(editorManager.editorMode).toBe('relalg');
-    expect(editorManager.editorFactories.relalg).toBe(relalgFactory);
+      expect(editorManager.editorMode).toBe('relalg');
+    }
+    finally {
+      resetCodeEditorFactories();
+    }
   });
 
   it('falls back to legacy packages option when blocklyPackages is missing', () => {

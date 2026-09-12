@@ -5,16 +5,14 @@ import { composeFillBlanksCode } from '../editor/fill-blanks/fill-blanks-code.js
 import { ensureBlocklyRuntime } from '../editor/blockly/blockly-runtime.js';
 import { ensureCodeMirrorRuntime } from '../editor/codemirror/codemirror-runtime.js';
 import { BlocklyProjectContextBuilder } from '../editor/blockly/project-symbols.js';
+import { getCodeEditorFactory } from '../editor/code-editor-factories.js';
 
 /**
  * Supported editor mode identifiers.
- * - 'code'        → CodeMirror (default)
- * - 'blocks'      → Blockly workspace only
- * - 'both'        → Blockly workspace + read-only generated-code preview
+ * - 'code'   → CodeMirror (default)
+ * - 'blocks' → Blockly workspace only
+ * - 'both'   → Blockly workspace + read-only generated-code preview
  * - 'fill-blanks' → Inline code template with editable blanks
- *
- * Modes beyond the core set are resolved via `workspaceOptions.editorFactories`
- * (e.g. the relational-algebra editor injected by SQLQuestion).
  */
 const EDITOR_MODES = ['code', 'blocks', 'both', 'fill-blanks'];
 
@@ -102,20 +100,9 @@ export default class EditorManager {
     this._defaultWorkspace = this.createDefaultWorkspace();
     this._workspace = this.cloneWorkspace(this._defaultWorkspace);
 
-    // Content-type-specific editor factories (e.g. relational algebra).
-    // Each entry maps an editorMode to a class implementing the EditorAdapter
-    // interface. Core modes are handled internally; custom modes fall back here.
-    this.editorFactories = (workspaceOptions?.editorFactories && typeof workspaceOptions.editorFactories === 'object')
-      ? workspaceOptions.editorFactories
-      : {};
-
-    // Editor mode: accept core modes and factory-registered custom modes;
-    // unknown values fall back to 'code' (preserves backward compatibility).
-    const requestedMode = workspaceOptions?.editorMode;
-    this.editorMode = (typeof requestedMode === 'string'
-      && (EDITOR_MODES.includes(requestedMode) || this.editorFactories[requestedMode]))
-      ? requestedMode
-      : 'code';
+    // Editor mode: 'code' | 'blocks' | 'both' | 'fill-blanks' | a mode with a
+    // custom editor factory registered via registerCodeEditorFactory().
+    this.editorMode = this.resolveEditorMode(workspaceOptions?.editorMode);
 
     // Per-language category selection for Blockly (null = full toolbox).
     this.blocklyCategories = workspaceOptions?.blocklyCategories ?? null;
@@ -132,6 +119,25 @@ export default class EditorManager {
     this.codeMirrorCdnUrl = this.workspaceOptions.codeMirrorCdnUrl;
     this.codeMirrorLanguageConfig = workspaceOptions?.codeMirrorLanguageConfig || null;
     this.codeMirrorCompletionConfig = workspaceOptions?.codeMirrorCompletionConfig || null;
+  }
+
+  /**
+   * Resolves the requested editor mode, allowing built-in modes plus any
+   * mode with a registered custom editor factory. Unknown modes fall back
+   * to 'code' to preserve backward compatibility.
+   * @param {string} [requestedMode] Requested editor mode.
+   * @returns {string} Resolved editor mode.
+   */
+  resolveEditorMode(requestedMode) {
+    if (EDITOR_MODES.includes(requestedMode)) {
+      return requestedMode;
+    }
+
+    if (requestedMode && getCodeEditorFactory(requestedMode)) {
+      return requestedMode;
+    }
+
+    return 'code';
   }
 
   /**
@@ -162,21 +168,14 @@ export default class EditorManager {
       await ensureBlocklyRuntime(this.blocklyCdnUrl);
     }
 
-    const needsCodeMirror = this.editorMode !== 'blocks'
-      && this.editorMode !== 'fill-blanks'
-      && !this.isCustomEditorMode();
-    const hasStaticSecondaryFiles = (this.editorMode === 'blocks' || this.editorMode === 'both')
-      && this.hasAdditionalSourceFiles();
-    if (needsCodeMirror || hasStaticSecondaryFiles) {
+    const usesCustomFactory = Boolean(getCodeEditorFactory(this.editorMode));
+
+    if (!usesCustomFactory && this.editorMode !== 'blocks' && this.editorMode !== 'fill-blanks') {
       await ensureCodeMirrorRuntime(this.codeMirrorCdnUrl);
     }
 
     this.renderFileTabs();
     this.mountEditorForActiveFile();
-  }
-
-  isCustomEditorMode() {
-    return Boolean(this.editorFactories[this.editorMode]);
   }
 
   getDOM() {
@@ -229,15 +228,6 @@ export default class EditorManager {
    */
   getCode() {
     this.persistActiveFileCode();
-    const activeFile = this.getActiveFile();
-    const entryFile = this.findWorkspaceFile(this.workspaceOptions.entryFileName);
-
-    if (this.isCustomEditorMode()
-      && activeFile?.name === entryFile?.name
-      && typeof this._editorInstance?.getCode === 'function') {
-      return `${this.getNormalizedPreCode()}${this._editorInstance.getCode()}${this.getNormalizedPostCode()}`;
-    }
-
     return this.getFileCode(this.workspaceOptions.entryFileName, {
       includeFixedCode: true,
     });
@@ -937,16 +927,28 @@ export default class EditorManager {
       completionConfig: this.codeMirrorCompletionConfig,
     };
 
-    // A secondary source file without its own Blockly state cannot safely be
-    // represented as blocks (not every language pack has a raw-code block).
-    // Use CodeMirror so edits are real rather than silently discarded.
-    const shouldUseBlockly = (this.editorMode === 'blocks' || this.editorMode === 'both')
-      && (activeFile.isEntry || Boolean(activeFile.blocklyWorkspaceState));
+    const shouldUseBlockly = this.editorMode === 'blocks' || this.editorMode === 'both';
     const blocklyWorkspaceState = activeFile.isEntry
       ? this.blocklyWorkspaceState
       : activeFile.blocklyWorkspaceState;
+    const staticCode = !activeFile.isEntry && !activeFile.blocklyWorkspaceState
+      ? activeFile.code
+      : null;
 
-    if (this.editorMode === 'fill-blanks') {
+    const CustomEditorFactory = getCodeEditorFactory(this.editorMode);
+
+    if (CustomEditorFactory) {
+      this._editorInstance = new CustomEditorFactory(
+        this._editorElement,
+        activeFile.code,
+        this.codingLanguage,
+        {
+          ...sharedOptions,
+          editorMode: this.editorMode,
+        }
+      );
+    }
+    else if (this.editorMode === 'fill-blanks') {
       this._editorInstance = new FillBlanksEditorInstance(
         this._editorElement,
         activeFile.code,
@@ -975,24 +977,7 @@ export default class EditorManager {
           blocklyPackages: this.blocklyPackages,
           codeContainer: this.codeContainer,
           blocklyContext: this.buildBlocklyContext(activeFile),
-        }
-      );
-    }
-    else if (this.isCustomEditorMode()) {
-      // Content-type-specific editor (e.g. relational algebra). The factory is
-      // injected via workspaceOptions.editorFactories; activeFile.code holds the
-      // editor-native representation (LaTeX) rather than executable code.
-      const EditorClass = this.editorFactories[this.editorMode];
-      this._editorInstance = new EditorClass(
-        this._editorElement,
-        activeFile.code,
-        this.codingLanguage,
-        {
-          ...sharedOptions,
-          onChangeCallback: () => {
-            activeFile.code = this._editorInstance.getTemplateCode();
-            this.onChangeCallback(this.getCode());
-          },
+          staticCode,
         }
       );
     }

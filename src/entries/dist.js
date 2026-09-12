@@ -25,6 +25,12 @@ import {
   registerBlocklyPackageManagers,
   resetBlocklyPackageManagers,
 } from '../scripts/editor/blockly/blockly-package-managers';
+import {
+  getCodeEditorFactory,
+  getRegisteredCodeEditorModes,
+  registerCodeEditorFactory,
+  resetCodeEditorFactories,
+} from '../scripts/editor/code-editor-factories';
 
 // Load library
 H5P.Markdown = Markdown;
@@ -48,3 +54,7 @@ H5P.resetBlocklyLanguagePacks = resetBlocklyLanguagePacks;
 H5P.registerBlocklyPackageManagers = registerBlocklyPackageManagers;
 H5P.getRegisteredBlocklyPackageManagers = getRegisteredBlocklyPackageManagers;
 H5P.resetBlocklyPackageManagers = resetBlocklyPackageManagers;
+H5P.registerCodeEditorFactory = registerCodeEditorFactory;
+H5P.getCodeEditorFactory = getCodeEditorFactory;
+H5P.getRegisteredCodeEditorModes = getRegisteredCodeEditorModes;
+H5P.resetCodeEditorFactories = resetCodeEditorFactories;

@@ -70,6 +70,7 @@ vi.mock('../src/scripts/editor/codemirror/codemirror-runtime.js', () => ({
 
 import CanvasManager from '../src/scripts/manager/canvasmanager.js';
 import ConsoleManager from '../src/scripts/manager/consolemanager.js';
+import { registerCodeEditorFactory, resetCodeEditorFactories } from '../src/scripts/editor/code-editor-factories.js';
 import EditorManager from '../src/scripts/manager/editormanager.js';
 import InstructionsManager from '../src/scripts/manager/instructionsmanager.js';
 
@@ -80,6 +81,7 @@ describe('EditorManager', () => {
     BlocklyEditorInstanceMock.mockClear();
     blocklyInstances.length = 0;
     ensureCodeMirrorRuntimeMock.mockClear();
+    resetCodeEditorFactories();
   });
 
   it('creates a CodeMirror editor and forwards updates to it', async () => {
@@ -525,7 +527,7 @@ describe('EditorManager', () => {
     expect(BlocklyEditorInstanceMock.mock.calls[0][3].editorMode).toBe('both');
   });
 
-  it('uses CodeMirror for additional source files without a Blockly workspace', async () => {
+  it('keeps additional source files in the Blockly layout without replacing their code', async () => {
     const manager = new EditorManager(
       'public class Main {}', 'java', '', '', true, 5, 'editor', 'pre', 'post',
       vi.fn(), vi.fn(), 'light',
@@ -550,9 +552,9 @@ describe('EditorManager', () => {
 
     manager.setActiveFile('Helper.java');
 
-    expect(BlocklyEditorInstanceMock).toHaveBeenCalledTimes(1);
-    expect(CodeMirrorInstanceMock).toHaveBeenCalledTimes(1);
-    expect(CodeMirrorInstanceMock.mock.calls[0][1]).toBe('public class Helper {}');
+    expect(CodeMirrorInstanceMock).not.toHaveBeenCalled();
+    expect(BlocklyEditorInstanceMock).toHaveBeenCalledTimes(2);
+    expect(BlocklyEditorInstanceMock.mock.calls[1][3].staticCode).toBe('public class Helper {}');
   });
 
   it('rejects unknown editorMode and falls back to "code"', async () => {
@@ -569,7 +571,7 @@ describe('EditorManager', () => {
     expect(BlocklyEditorInstanceMock).not.toHaveBeenCalled();
   });
 
-  it('uses a registered custom editor factory for custom editor modes', async () => {
+  it('uses a custom editor factory registered via registerCodeEditorFactory', async () => {
     const onChange = vi.fn();
     const customInstances = [];
     const CustomEditor = vi.fn().mockImplementation((target, content, language, options = {}) => {
@@ -578,11 +580,11 @@ describe('EditorManager', () => {
         content,
         language,
         options,
-        code: 'SELECT * FROM R;',
-        templateCode: content,
-        getCode: vi.fn(() => instance.code),
-        getTemplateCode: vi.fn(() => instance.templateCode),
-        setCode: vi.fn((code) => { instance.templateCode = code; }),
+        currentCode: content,
+        getCode: vi.fn(() => instance.currentCode),
+        setCode: vi.fn((code) => {
+          instance.currentCode = code;
+        }),
         destroy: vi.fn(),
         setFixedLines: vi.fn(),
         restoreDynamicHeight: vi.fn(),
@@ -591,27 +593,29 @@ describe('EditorManager', () => {
       customInstances.push(instance);
       return instance;
     });
+    registerCodeEditorFactory('relalg', CustomEditor);
 
     const manager = new EditorManager(
       '\\sigma_{x=1}(R)', 'sql', '', '', true, 5, 'editor', 'pre', 'post',
       onChange, vi.fn(), 'light',
-      { editorMode: 'relalg', editorFactories: { relalg: CustomEditor } },
+      { editorMode: 'relalg' },
     );
     manager.getDOM();
     await manager.setupEditors();
 
     expect(manager.editorMode).toBe('relalg');
     expect(CustomEditor).toHaveBeenCalledTimes(1);
+    expect(CustomEditor.mock.calls[0][1]).toBe('\\sigma_{x=1}(R)');
     expect(CodeMirrorInstanceMock).not.toHaveBeenCalled();
     expect(BlocklyEditorInstanceMock).not.toHaveBeenCalled();
     expect(ensureCodeMirrorRuntimeMock).not.toHaveBeenCalled();
-    expect(manager.getCode()).toBe('SELECT * FROM R;');
+    expect(manager.getCode()).toBe('\\sigma_{x=1}(R)');
 
-    customInstances[0].templateCode = '\\pi_{a}(R)';
-    customInstances[0].options.onChangeCallback();
+    customInstances[0].currentCode = '\\pi_{a}(R)';
+    customInstances[0].options.onChangeCallback('\\pi_{a}(R)');
 
-    expect(manager.getWorkspaceSnapshot().files[0].code).toBe('\\pi_{a}(R)');
-    expect(onChange).toHaveBeenCalledWith('SELECT * FROM R;');
+    expect(manager.getCode()).toBe('\\pi_{a}(R)');
+    expect(onChange).toHaveBeenCalledWith('\\pi_{a}(R)');
   });
 
   it('passes blocklyCategories through to BlocklyEditorInstance', async () => {

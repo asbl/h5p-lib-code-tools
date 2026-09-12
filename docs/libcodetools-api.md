@@ -16,6 +16,23 @@ bundle and register it through the stable hooks below.
 Language packs must follow the `BlocklyLanguagePack` contract in
 `src/scripts/editor/blockly/blockly-language-pack-contract.js`.
 
+## Custom Editor Modes
+
+- `H5P.registerCodeEditorFactory(mode, factory)` registers a custom editor
+  implementation for an `editorMode` value beyond the built-in `code`,
+  `blocks`, `both` and `fill-blanks` modes, e.g. a relational-algebra editor
+  for SQL. `factory` must follow the same constructor contract as the
+  built-in editors: `(target, content, codingLanguage, options)`, and the
+  returned instance must implement `getCode()`/`setCode()` (plus `destroy()`,
+  `setFixedLines()`, `restoreDynamicHeight()` and `setTheme()`).
+- `H5P.getCodeEditorFactory(mode)` resolves a registered factory.
+- `H5P.getRegisteredCodeEditorModes()` is intended for diagnostics/tests.
+
+Content types register their factory during bundle startup, then pass the
+matching `editorMode` string through `CodeContainer`/`EditorManager` options.
+An `editorMode` without a registered factory and outside the built-in list
+falls back to `code`.
+
 ## Shared Configuration Helpers
 
 `src/scripts/services/code-question-config.js` contains small shared helpers for:
