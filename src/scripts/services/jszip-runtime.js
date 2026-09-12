@@ -1,6 +1,7 @@
 import { applyCspNonce } from './csp';
+import { getCdnPackageVersion } from './cdn-package-versions';
 
-export const DEFAULT_JSZIP_CDN_URL = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
+export const DEFAULT_JSZIP_CDN_URL = `https://cdn.jsdelivr.net/npm/jszip@${getCdnPackageVersion('jszip')}/dist/jszip.min.js`;
 
 const sharedState = {
   loadPromise: null,

@@ -33,6 +33,17 @@ matching `editorMode` string through `CodeContainer`/`EditorManager` options.
 An `editorMode` without a registered factory and outside the built-in list
 falls back to `code`.
 
+## CDN Runtime Versions
+
+Some runtime libraries (Blockly, JSZip, marked, marked-alert) are both a
+local devDependency (used for tests/bundling) and loaded from a CDN at
+runtime with a pinned version. `src/scripts/services/cdn-package-versions.js`
+derives the CDN version from the devDependency entry in `package.json`, so
+there is a single place to bump when updating one of these packages. Other
+CDN-loaded libraries without a local devDependency (DOMPurify, Mermaid,
+SweetAlert2, p5.js, Font Awesome) keep their pinned version as a plain string
+constant in their respective `*-runtime.js` file.
+
 ## Shared Configuration Helpers
 
 `src/scripts/services/code-question-config.js` contains small shared helpers for:

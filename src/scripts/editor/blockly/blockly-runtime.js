@@ -1,6 +1,7 @@
 import { applyCspNonce } from '../../services/csp';
+import { getCdnPackageVersion } from '../../services/cdn-package-versions';
 
-const DEFAULT_BLOCKLY_CDN_URL = 'https://cdn.jsdelivr.net/npm/blockly@12.4.1/';
+export const DEFAULT_BLOCKLY_CDN_URL = `https://cdn.jsdelivr.net/npm/blockly@${getCdnPackageVersion('blockly')}/`;
 
 const sharedBlocklyRuntimeState = {
   loadPromise: null,

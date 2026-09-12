@@ -1,8 +1,10 @@
+import { getCdnPackageVersion } from './cdn-package-versions';
+
 export const DEFAULT_MARKDOWN_CDN_URL = 'https://esm.sh/';
 
-const MARKED_SPECIFIER = 'marked@9.1.6';
+const MARKED_SPECIFIER = `marked@${getCdnPackageVersion('marked')}`;
 const DOMPURIFY_SPECIFIER = 'dompurify@3.0.6';
-const MARKED_ALERT_SPECIFIER = 'marked-alert@2.1.2';
+const MARKED_ALERT_SPECIFIER = `marked-alert@${getCdnPackageVersion('marked-alert')}`;
 
 const sharedState = {
   loadPromise: null,
