@@ -10,7 +10,10 @@ bundle and register it through the stable hooks below.
   language toolbox and `generate(workspace)` implementation.
 - `H5P.getBlocklyLanguagePack(language)` resolves a registered pack.
 - `H5P.registerBlocklyPackageManagers(managers)` registers package-specific
-  Blockly categories such as Python NumPy, Matplotlib, Miniworlds and SciPy.
+  Blockly categories (toolbox contents plus Python code generators) that a
+  content type owns. LibCodeTools ships no concrete package managers itself;
+  e.g. PythonQuestion registers its own NumPy, Matplotlib, Miniworlds and
+  SciPy managers from `src/scripts/blockly/packages/` during bundle startup.
 - `H5P.getRegisteredBlocklyPackageManagers()` is intended for diagnostics/tests.
 
 Language packs must follow the `BlocklyLanguagePack` contract in
