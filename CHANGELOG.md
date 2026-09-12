@@ -7,7 +7,7 @@ that period. From here on, add an entry under **Unreleased** with each
 notable change, then move it under a version heading when `library.json` is
 bumped.
 
-## Unreleased
+## [6.95.0]
 
 ### Added
 
