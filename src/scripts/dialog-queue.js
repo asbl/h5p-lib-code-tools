@@ -4,15 +4,14 @@ import { ensureSweetAlertRuntime } from './services/sweetalert-runtime';
  * display of SweetAlert2 dialogs.
  * It provides two public methods:
  *
- *  `enqueueAlert(message|config, options?)` – shows a simple alert/confirmation
- *    dialog and resolves when the user closes it.
- *  * `enqueueInput(prompt|config, options?)` – shows an input dialog and resolves
- *    with the text entered by the user.
+ * `enqueueAlert(message|config, options?)` – shows a simple alert/confirmation
+ * dialog and resolves when the user closes it.
+ * `enqueueInput(prompt|config, options?)` – shows an input dialog and resolves
+ * with the text entered by the user.
  *
  * Both methods internally use a Promise‑queue so that no dialog overwrites a
  * previously opened one. An optional per‑call timeout (in ms) can be supplied;
  * a value of `0` disables automatic timeout.
- *
  * @example
  * import DialogQueue from './DialogQueue.js';
  *
@@ -32,8 +31,8 @@ import { ensureSweetAlertRuntime } from './services/sweetalert-runtime';
 export default class DialogQueue {
   /**
    * Create a new DialogQueue.
-   * @param {Object} [cfg] - Configuration object.
-   * @param {number} [cfg.defaultTimeout=0] - Default timeout (ms) applied to
+   * @param {object} [cfg] - Configuration object.
+   * @param {number} [cfg.defaultTimeout] - Default timeout (ms) applied to
    *   every dialog unless overridden in the call options. `0` means “no timeout”.
    */
   constructor({ defaultTimeout = 0, target = null, sweetAlertCdnUrl = '' } = {}) {
@@ -71,8 +70,8 @@ export default class DialogQueue {
 
   /**
    * Merges queue-level defaults into a SweetAlert config object.
-   * @param {Object} swalConfig Base SweetAlert config.
-   * @returns {Object} Effective config.
+   * @param {object} swalConfig Base SweetAlert config.
+   * @returns {object} Effective config.
    */
   getEffectiveSwalConfig(swalConfig) {
     const cfg = { ...swalConfig };
@@ -105,8 +104,8 @@ export default class DialogQueue {
   /**
    * Internal helper that appends a SweetAlert dialog to the current promise chain.
    * @private
-   * @param {Object} swalConfig - Full SweetAlert2 configuration object.
-   * @param {Object} [_opts] - Optional per‑call options.
+   * @param {object} swalConfig - Full SweetAlert2 configuration object.
+   * @param {object} [_opts] - Optional per‑call options.
    * @param {number} [opts.timeout] - Timeout (ms) for this specific dialog.
    * @returns {Promise<any>} Promise that resolves with the SweetAlert result
    *   (or `undefined` on timeout/error).
@@ -137,9 +136,9 @@ export default class DialogQueue {
 
   /**
    * Show a simple alert/confirmation dialog.
-   * @param {string|Object} textOrConfig - Either a plain string (used as `text`)
+   * @param {string | object} textOrConfig - Either a plain string (used as `text`)
    *   or a full SweetAlert2 configuration object.
-   * @param {Object} [opts] - Optional per‑call options.
+   * @param {object} [opts] - Optional per‑call options.
    * @param {number} [opts.timeout] - Timeout (ms) for this specific alert.
    * @returns {Promise<void>} Resolves when the dialog is closed (by user or timeout).
    */
@@ -161,9 +160,9 @@ export default class DialogQueue {
 
   /**
    * Show an input dialog and retrieve the entered text.
-   * @param {string|Object} promptOrConfig - Prompt string (used as `title`) or a
+   * @param {string | object} promptOrConfig - Prompt string (used as `title`) or a
    *   SweetAlert2 configuration object. The `input` property will be forced to `'text'`.
-   * @param {Object} [opts] - Optional per‑call options.
+   * @param {object} [opts] - Optional per‑call options.
    * @param {number} [opts.timeout] - Timeout (ms) for this specific input dialog.
    * @returns {Promise<string>} Resolves with the text entered by the user.
    *   If the user closes the dialog without entering anything, resolves to an

@@ -16,7 +16,7 @@ export default class StorageManager {
    * @param {object} [options] - Optional configuration.
    * @param {string} [options.localStorageKey] - Key for localStorage.
    * @param {string} [options.downloadFilename] - Default filename for download.
-  * @param {string} [options.jsZipCdnUrl] - Optional external JSZip runtime URL.
+   * @param {string} [options.jsZipCdnUrl] - Optional external JSZip runtime URL.
    */
   constructor(codeContainer, options = {}) {
     this.codeContainer = codeContainer;

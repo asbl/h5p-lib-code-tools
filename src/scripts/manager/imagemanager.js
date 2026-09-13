@@ -16,7 +16,7 @@ export default class ImageManager extends FileManager {
 
   /**
    * Builds the relative file path used inside the runtime file system.
-  * @param {string} [fileName] - Visible file name.
+   * @param {string} [fileName] - Visible file name.
    * @returns {string} Runtime access path relative to the working directory.
    */
   static getRelativeAccessPath(fileName = '') {
@@ -25,9 +25,9 @@ export default class ImageManager extends FileManager {
 
   /**
    * @param {object} codeContainer - Owning code container instance.
-  * @param {object} [options] - Manager options.
-  * @param {boolean} [options.enabled] - Whether uploads are enabled.
-  * @param {object} [options.l10n] - Localization object or proxy.
+   * @param {object} [options] - Manager options.
+   * @param {boolean} [options.enabled] - Whether uploads are enabled.
+   * @param {object} [options.l10n] - Localization object or proxy.
    * @param {function} [options.resizeActionHandler] - Resize callback.
    */
   constructor(codeContainer, options = {}) {

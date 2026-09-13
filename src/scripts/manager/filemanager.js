@@ -44,7 +44,7 @@ import { getLibCodeToolsL10nValue } from '../services/libcodetools-l10n';
 export default class FileManager {
   /**
    * @param {object} codeContainer - Owning code container instance.
-    * @param {FileManagerOptions} [options] - Manager options.
+   * @param {FileManagerOptions} [options] - Manager options.
    */
   constructor(codeContainer, options = {}) {
     this.codeContainer = codeContainer;

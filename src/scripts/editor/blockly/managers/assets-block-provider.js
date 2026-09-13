@@ -112,7 +112,6 @@ export default class AssetsBlockProvider {
   /**
    * Builds a Blockly category containing asset blocks (if assets are available).
    * Returns null if no assets are enabled.
-   *
    * @returns {object|null} Category descriptor or null.
    */
   buildCategory() {
