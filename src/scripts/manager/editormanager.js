@@ -107,6 +107,9 @@ export default class EditorManager {
     // Per-language category selection for Blockly (null = full toolbox).
     this.blocklyCategories = workspaceOptions?.blocklyCategories ?? null;
     this.blocklyWorkspaceState = workspaceOptions?.blocklyWorkspaceState ?? null;
+    // Author-defined Blockly state of the entry file; restored when a
+    // workspace snapshot carries no entry Blockly state of its own.
+    this._defaultBlocklyWorkspaceState = this.blocklyWorkspaceState;
 
     // CodeContainer for accessing uploaded images/sounds in Blockly.
     this.codeContainer = workspaceOptions?.codeContainer ?? null;
@@ -340,6 +343,11 @@ export default class EditorManager {
 
   setWorkspaceSnapshot(workspace = {}) {
     this._workspace = this.createWorkspaceFromSnapshot(workspace, this._defaultWorkspace);
+    // The entry file mounts its blocks from this.blocklyWorkspaceState, so it
+    // must follow the snapshot; otherwise a reset would remount the learner's
+    // previous blocks.
+    const entryFile = this._workspace.files.find((file) => file.isEntry);
+    this.blocklyWorkspaceState = entryFile?.blocklyWorkspaceState ?? this._defaultBlocklyWorkspaceState;
     this.renderFileTabs();
     this.renderFileManager();
 
@@ -430,6 +438,9 @@ export default class EditorManager {
     };
 
     rawFiles.forEach((file, index) => pushFile(file, index));
+    fallback?.files
+      ?.filter((file) => file?.isEntry !== true && file?.visible === false && !usedNames.has(file.name))
+      .forEach((file) => pushFile(file, files.length));
 
     if (!files.some((file) => file.isEntry)) {
       const fallbackEntry = fallback?.files?.find((file) => file.isEntry) || null;

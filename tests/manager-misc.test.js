@@ -266,6 +266,59 @@ describe('EditorManager', () => {
     expect(snapshot.files.find((file) => file.name === 'secret.py')?.code).toBe('TOKEN = 1');
   });
 
+  it('restores hidden author source files when applying a learner workspace snapshot', () => {
+    const manager = new EditorManager(
+      'from secret_case import Case',
+      'python',
+      '',
+      '',
+      true,
+      5,
+      'editor',
+      'pre',
+      'post',
+      vi.fn(),
+      vi.fn(),
+      'light',
+      {
+        enabled: true,
+        entryFileName: 'main.py',
+        sourceFiles: [
+          { name: 'visible_notes.py', code: 'PUBLIC = True', visible: true, editable: true },
+          { name: 'secret_case.py', code: 'class Case: pass', visible: false, editable: false },
+        ],
+      },
+    );
+
+    manager.setWorkspaceSnapshot({
+      entryFileName: 'main.py',
+      activeFileName: 'main.py',
+      files: [
+        {
+          name: 'main.py',
+          code: 'from secret_case import Case\nprint(Case)',
+          visible: true,
+          editable: true,
+          isEntry: true,
+        },
+      ],
+    });
+
+    const snapshot = manager.getWorkspaceSnapshot();
+
+    expect(snapshot.files.map((file) => file.name)).toEqual([
+      'main.py',
+      'secret_case.py',
+    ]);
+    expect(snapshot.files.find((file) => file.name === 'secret_case.py')).toMatchObject({
+      code: 'class Case: pass',
+      visible: false,
+      editable: false,
+      isEntry: false,
+    });
+    expect(snapshot.files.some((file) => file.name === 'visible_notes.py')).toBe(false);
+  });
+
   it('keeps Java workspace files as .java tabs', async () => {
     const manager = new EditorManager(
       'public class Main {}',
@@ -511,6 +564,44 @@ describe('EditorManager', () => {
     expect(BlocklyEditorInstanceMock).toHaveBeenCalledTimes(1);
     expect(CodeMirrorInstanceMock).not.toHaveBeenCalled();
     expect(BlocklyEditorInstanceMock.mock.calls[0][3].editorMode).toBe('blocks');
+  });
+
+  it('remounts the authored entry blocks when the default workspace snapshot is restored', async () => {
+    const authoredState = { authored: true };
+    const manager = new EditorManager(
+      'print(1)', 'python', '', '', true, 5, 'editor', 'pre', 'post',
+      vi.fn(), vi.fn(), 'light',
+      { editorMode: 'blocks', blocklyWorkspaceState: authoredState },
+    );
+    manager.getDOM();
+    await manager.setupEditors();
+
+    // Simulate learner edits in the mounted Blockly editor.
+    manager._editorInstance.getCode = vi.fn(() => 'print(2)');
+    manager._editorInstance.getWorkspaceState = vi.fn(() => ({ learner: true }));
+    manager.persistActiveFileCode();
+    expect(manager.blocklyWorkspaceState).toEqual({ learner: true });
+
+    manager.setWorkspaceSnapshot(manager.getDefaultWorkspaceSnapshot());
+
+    expect(manager.blocklyWorkspaceState).toBe(authoredState);
+    expect(BlocklyEditorInstanceMock.mock.calls.at(-1)[3].blocklyWorkspaceState).toBe(authoredState);
+  });
+
+  it('restores the entry blocks stored in a workspace snapshot', async () => {
+    const manager = new EditorManager(
+      'print(1)', 'python', '', '', true, 5, 'editor', 'pre', 'post',
+      vi.fn(), vi.fn(), 'light',
+      { editorMode: 'blocks' },
+    );
+    manager.getDOM();
+    await manager.setupEditors();
+
+    const snapshot = manager.getDefaultWorkspaceSnapshot();
+    snapshot.files[0].blocklyWorkspaceState = { saved: true };
+    manager.setWorkspaceSnapshot(snapshot);
+
+    expect(BlocklyEditorInstanceMock.mock.calls.at(-1)[3].blocklyWorkspaceState).toEqual({ saved: true });
   });
 
   it('uses BlocklyEditorInstance with editorMode "both" in both-panel mode', async () => {

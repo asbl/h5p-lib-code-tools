@@ -585,6 +585,14 @@ export default class CodeContainer {
   }
 
   /**
+   * Immediately discards locally autosaved work, including a pending save.
+   * @returns {Promise<void>} Resolves once the local entry is removed.
+   */
+  clearWorkspaceAutosave() {
+    return this.workspaceAutosave?.clear() ?? Promise.resolve();
+  }
+
+  /**
    * Determines the MIME type from a file name when the response header is unavailable.
    * @param {string} fileName - Image file name.
    * @returns {string} Best-effort MIME type.
@@ -826,8 +834,9 @@ export default class CodeContainer {
       return false;
     }
 
-    const editorManager = this.getEditorManager();
-    const hasAdditionalSourceFiles = editorManager?.hasAdditionalSourceFiles?.() === true;
+    const workspace = this.getWorkspaceSnapshot();
+    const hasAdditionalSourceFiles = Array.isArray(workspace?.files)
+      && workspace.files.some((file) => file.isEntry !== true && file.visible !== false);
     const hasImages = this.getImageManager()?.isEnabled?.() === true
       && this.getImageManager().getFiles().length > 0;
     const hasSounds = this.getSoundManager()?.isEnabled?.() === true
@@ -855,15 +864,21 @@ export default class CodeContainer {
       type: this.options?.projectBundleType || this.getDefaultProjectBundleType(),
       version: 1,
       entryFileName: workspace.entryFileName,
-      activeFileName: workspace.activeFileName,
-      sourceFiles: workspace.files.map((file) => ({
-        name: file.name,
-        code: file.code,
-        visible: file.visible !== false,
-        editable: file.editable !== false,
-        isEntry: file.isEntry === true,
-        blankValues: file.blankValues ? { ...file.blankValues } : null,
-      })),
+      activeFileName: workspace.files.some((file) => (
+        file.name === workspace.activeFileName && file.visible !== false
+      ))
+        ? workspace.activeFileName
+        : workspace.entryFileName,
+      sourceFiles: workspace.files
+        .filter((file) => file.isEntry === true || file.visible !== false)
+        .map((file) => ({
+          name: file.name,
+          code: file.code,
+          visible: file.visible !== false,
+          editable: file.editable !== false,
+          isEntry: file.isEntry === true,
+          blankValues: file.blankValues ? { ...file.blankValues } : null,
+        })),
       images: this.getImageManager()?.isEnabled?.() === true
         ? this.getImageManager().serializeFiles()
         : [],

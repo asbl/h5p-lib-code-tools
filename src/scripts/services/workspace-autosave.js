@@ -60,6 +60,34 @@ export default class WorkspaceAutosave {
     }
   }
 
+  /**
+   * Discards any pending and stored snapshot, e.g. when the learner resets
+   * the task. Cancelling the timer prevents a queued save of the previous
+   * work from landing after the reset.
+   * @returns {Promise<void>} Resolves once the stored entry is removed.
+   */
+  async clear() {
+    clearTimeout(this.timer);
+    this.timer = null;
+    if (!this.isEnabled()) return;
+
+    try {
+      localStorage.removeItem(this.fallbackKey);
+    }
+    catch {
+      // Storage unavailable.
+    }
+
+    try {
+      const db = await this.open();
+      await this.request(db.transaction(this.storeName, 'readwrite').objectStore(this.storeName).delete(this.key));
+      db.close();
+    }
+    catch {
+      // IndexedDB unavailable; the localStorage fallback was cleared above.
+    }
+  }
+
   open() {
     return new Promise((resolve, reject) => {
       if (!globalThis.indexedDB) return reject(new Error('IndexedDB unavailable'));

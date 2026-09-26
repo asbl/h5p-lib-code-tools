@@ -267,6 +267,81 @@ describe('CodeContainer theme toggle', () => {
     });
   });
 
+  it('keeps hidden author source files out of project bundles', () => {
+    const container = createContainer({
+      projectBundleType: 'h5p-python-question-project',
+      projectStorageEnabled: true,
+    });
+
+    container.getWorkspaceSnapshot = vi.fn(() => ({
+      entryFileName: 'main.py',
+      activeFileName: 'secret_case.py',
+      files: [
+        {
+          name: 'main.py',
+          code: 'from secret_case import Case\nprint(Case().suspects())',
+          visible: true,
+          editable: true,
+          isEntry: true,
+        },
+        {
+          name: 'visible_notes.py',
+          code: 'PUBLIC = True',
+          visible: true,
+          editable: false,
+          isEntry: false,
+        },
+        {
+          name: 'secret_case.py',
+          code: 'class Case:\n    def suspects(self):\n        return ["Mara"]',
+          visible: false,
+          editable: false,
+          isEntry: false,
+        },
+      ],
+    }));
+
+    const bundle = container.getProjectBundle();
+
+    expect(bundle.sourceFiles.map((file) => file.name)).toEqual([
+      'main.py',
+      'visible_notes.py',
+    ]);
+    expect(bundle.activeFileName).toBe('main.py');
+    expect(bundle.sourceFiles.some((file) => file.code.includes('class Case'))).toBe(false);
+  });
+
+  it('does not force a project bundle when only hidden author source files exist', () => {
+    const container = createContainer({
+      projectBundleType: 'h5p-python-question-project',
+      projectStorageEnabled: true,
+    });
+
+    container.getWorkspaceSnapshot = vi.fn(() => ({
+      entryFileName: 'main.py',
+      activeFileName: 'main.py',
+      files: [
+        {
+          name: 'main.py',
+          code: 'from secret_case import Case',
+          visible: true,
+          editable: true,
+          isEntry: true,
+        },
+        {
+          name: 'secret_case.py',
+          code: 'class Case: pass',
+          visible: false,
+          editable: false,
+          isEntry: false,
+        },
+      ],
+    }));
+
+    expect(container.hasProjectBundleContents()).toBe(false);
+    expect(container.getProjectBundle()).toBeNull();
+  });
+
   it('restores fill-blank values from project bundles', () => {
     const container = createContainer({
       projectBundleType: 'h5p-python-question-project',

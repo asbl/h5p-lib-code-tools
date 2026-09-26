@@ -214,6 +214,7 @@ export default class BlocklyLanguageManager {
   }
 
   migrateWorkspaceState(state) {
-    return this.assetsBlockProvider?.migrateWorkspaceState?.(state) || state;
+    const languageState = this.languagePack.migrateWorkspaceState?.(state) || state;
+    return this.assetsBlockProvider?.migrateWorkspaceState?.(languageState) || languageState;
   }
 }
