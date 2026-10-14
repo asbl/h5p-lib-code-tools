@@ -112,17 +112,22 @@ describe('EditorManager', () => {
       setFixedLines: vi.fn(),
       restoreDynamicHeight: vi.fn(),
       setTheme: vi.fn(),
+      setInlineDiagnostics: vi.fn(),
     };
 
     manager.setCode('print(2)');
     manager.setFullscreenLines(20);
     manager.restoreDynamicHeight();
     manager.setTheme('light');
+    manager.setInlineDiagnostics([{ from: 0, to: 4, severity: 'warning' }]);
 
     expect(manager._editorInstance.setCode).toHaveBeenCalledWith('print(2)');
     expect(manager._editorInstance.setFixedLines).toHaveBeenCalledWith(20);
     expect(manager._editorInstance.restoreDynamicHeight).toHaveBeenCalled();
     expect(manager._editorInstance.setTheme).toHaveBeenCalledWith('light');
+    expect(manager._editorInstance.setInlineDiagnostics).toHaveBeenCalledWith([
+      { from: 0, to: 4, severity: 'warning' },
+    ]);
   });
 
   it('does not duplicate fixed post code when setting entry code programmatically', () => {

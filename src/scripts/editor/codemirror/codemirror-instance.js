@@ -404,6 +404,7 @@ export default class CodeMirrorInstance {
   setInlineDiagnostics(diagnostics = []) {
     this.inlineDiagnostics = Array.isArray(diagnostics)
       ? diagnostics.filter((diagnostic) => diagnostic && typeof diagnostic.from === 'number' && typeof diagnostic.to === 'number')
+        .sort((left, right) => left.from - right.from || left.to - right.to)
       : [];
 
     if (!this.editorView) {

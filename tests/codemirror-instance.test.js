@@ -114,6 +114,22 @@ describe('CodeMirrorInstance', () => {
     expect(instance.editorView.dispatch).toHaveBeenCalledWith({ effects: effect });
   });
 
+  it('sorts inline diagnostics before dispatching CodeMirror decorations', () => {
+    const effect = Symbol('diagnostics-effect');
+    const instance = Object.create(CodeMirrorInstance.prototype);
+    instance.setInlineDiagnosticsEffect = { of: vi.fn(() => effect) };
+    instance.editorView = { dispatch: vi.fn() };
+
+    instance.setInlineDiagnostics([
+      { from: 12, to: 15, severity: 'warning' },
+      { from: 4, to: 8, severity: 'warning' },
+    ]);
+
+    expect(instance.inlineDiagnostics.map((diagnostic) => diagnostic.from)).toEqual([4, 12]);
+    expect(instance.setInlineDiagnosticsEffect.of).toHaveBeenCalledWith(instance.inlineDiagnostics);
+    expect(instance.editorView.dispatch).toHaveBeenCalledWith({ effects: effect });
+  });
+
   it('reconfigures the theme compartment when setTheme is called', () => {
     const effect = Symbol('effect');
     const instance = Object.create(CodeMirrorInstance.prototype);

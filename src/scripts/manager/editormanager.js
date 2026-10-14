@@ -332,6 +332,10 @@ export default class EditorManager {
     this._editorInstance?.setCompletionConfig?.(this.codeMirrorCompletionConfig);
   }
 
+  setInlineDiagnostics(diagnostics = []) {
+    this._editorInstance?.setInlineDiagnostics?.(diagnostics);
+  }
+
   getWorkspaceSnapshot() {
     this.persistActiveFileCode();
     return this.cloneWorkspace(this._workspace);
