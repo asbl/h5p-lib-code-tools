@@ -140,6 +140,7 @@ export default class CodeMirrorInstance {
         EditorView.editable.of(!this.options.readonly && !this.isConsole),
         this.createReadonlyDecorations(),
         this.createInlineDiagnosticsDecorations(),
+        this.createInlineDiagnosticsTooltipExtension(),
         ...(this.isConsole ? [this.createConsoleErrorLineDecorations()] : []),
         ...this.readOnlyRangesExtension()
       ]
@@ -149,6 +150,7 @@ export default class CodeMirrorInstance {
 
     if (this.options.minHeightFromContent) this.applyMinHeightFromContent();
     this.attachResizeObserver();
+    this.attachInlineDiagnosticsScrollHandler();
     this.shieldPrintableKeypresses();
     this.shieldEditorKeyboardShortcuts();
     if (!this.isConsole) this.setupRunShortcut();
@@ -362,6 +364,7 @@ export default class CodeMirrorInstance {
   }
 
   handleChange() {
+    this.hideInlineDiagnosticsTooltip();
     this.options.onChangeCallback(this.getCode());
   }
 
@@ -444,7 +447,6 @@ export default class CodeMirrorInstance {
       selection: { anchor: position },
       scrollIntoView: true,
     });
-
     this.editorView.focus?.();
   }
 
@@ -453,6 +455,8 @@ export default class CodeMirrorInstance {
       ? diagnostics.filter((diagnostic) => diagnostic && typeof diagnostic.from === 'number' && typeof diagnostic.to === 'number')
         .sort((left, right) => left.from - right.from || left.to - right.to)
       : [];
+
+    this.hideInlineDiagnosticsTooltip();
 
     if (!this.editorView) {
       return;
@@ -463,11 +467,154 @@ export default class CodeMirrorInstance {
     });
   }
 
+  /**
+   * --- Inline diagnostics tooltip ---
+   * Shows the diagnostic message on hover (pointer devices) and on click/tap
+   * (covers touch devices), so the message text is readable everywhere.
+   * @returns {object} CodeMirror DOM event handlers extension.
+   */
+  createInlineDiagnosticsTooltipExtension() {
+    const { EditorView } = getCodeMirrorRuntime();
+
+    return EditorView.domEventHandlers({
+      mouseover: (event) => this.handleInlineDiagnosticsMouseOver(event),
+      mouseout: (event) => this.handleInlineDiagnosticsMouseOut(event),
+      click: (event) => this.handleInlineDiagnosticsClick(event),
+    });
+  }
+
+  attachInlineDiagnosticsScrollHandler() {
+    const scroller = this.editorView?.dom?.querySelector?.('.cm-scroller');
+    if (!scroller) return;
+
+    this._inlineDiagnosticsScrollHandler = () => this.hideInlineDiagnosticsTooltip();
+    scroller.addEventListener('scroll', this._inlineDiagnosticsScrollHandler);
+  }
+
+  supportsHoverInteraction() {
+    return typeof window !== 'undefined'
+      && typeof window.matchMedia === 'function'
+      && window.matchMedia('(hover: hover)').matches;
+  }
+
+  getInlineDiagnosticFromEvent(event) {
+    const target = event?.target;
+    if (!target || typeof target.closest !== 'function') {
+      return null;
+    }
+
+    const mark = target.closest('.cm-inline-diagnostic');
+    if (!mark || !this.editorView?.dom?.contains(mark)) {
+      return null;
+    }
+
+    const message = mark.getAttribute('aria-label') || '';
+    if (!message) {
+      return null;
+    }
+
+    return {
+      mark,
+      message,
+      severity: mark.classList.contains('cm-inline-diagnostic-error') ? 'error' : 'warning',
+    };
+  }
+
+  handleInlineDiagnosticsMouseOver(event) {
+    if (!this.supportsHoverInteraction()) return false;
+
+    const entry = this.getInlineDiagnosticFromEvent(event);
+    if (!entry) return false;
+
+    this.showInlineDiagnosticsTooltip(entry);
+    return false;
+  }
+
+  handleInlineDiagnosticsMouseOut(event) {
+    if (!this.supportsHoverInteraction()) return false;
+
+    const mark = event?.target?.closest?.('.cm-inline-diagnostic');
+    if (!mark) return false;
+    if (mark.contains(event.relatedTarget)) return false;
+
+    this.hideInlineDiagnosticsTooltip();
+    return false;
+  }
+
+  handleInlineDiagnosticsClick(event) {
+    const entry = this.getInlineDiagnosticFromEvent(event);
+
+    if (!entry) {
+      this.hideInlineDiagnosticsTooltip();
+      return false;
+    }
+
+    this.toggleInlineDiagnosticsTooltip(entry);
+    return false;
+  }
+
+  toggleInlineDiagnosticsTooltip(entry) {
+    if (this.inlineDiagnosticsTooltip?.sourceMark === entry.mark) {
+      this.hideInlineDiagnosticsTooltip();
+      return;
+    }
+
+    this.showInlineDiagnosticsTooltip(entry);
+  }
+
+  showInlineDiagnosticsTooltip(entry) {
+    if (!entry?.mark || !entry.message) return;
+    if (this.inlineDiagnosticsTooltip?.sourceMark === entry.mark) return;
+
+    this.hideInlineDiagnosticsTooltip();
+
+    const tooltip = document.createElement('div');
+    tooltip.className = `cm-inline-diagnostic-tooltip cm-inline-diagnostic-tooltip-${entry.severity}`;
+    tooltip.setAttribute('role', 'tooltip');
+    tooltip.textContent = entry.message;
+    document.body.appendChild(tooltip);
+
+    const tooltipRect = tooltip.getBoundingClientRect();
+    const markRect = entry.mark.getBoundingClientRect();
+    const viewportWidth = window.innerWidth || tooltipRect.width;
+    const viewportHeight = window.innerHeight || tooltipRect.height;
+
+    let left = markRect.left + markRect.width / 2 - tooltipRect.width / 2;
+    left = Math.max(8, Math.min(left, Math.max(8, viewportWidth - tooltipRect.width - 8)));
+
+    let top = markRect.top - tooltipRect.height - 8;
+    if (top < 8) {
+      top = markRect.bottom + 8;
+    }
+    top = Math.min(top, Math.max(8, viewportHeight - tooltipRect.height - 8));
+
+    tooltip.style.left = `${Math.round(left)}px`;
+    tooltip.style.top = `${Math.round(top)}px`;
+
+    this.inlineDiagnosticsTooltip = { element: tooltip, sourceMark: entry.mark };
+  }
+
+  hideInlineDiagnosticsTooltip() {
+    if (!this.inlineDiagnosticsTooltip) return;
+
+    this.inlineDiagnosticsTooltip.element.remove();
+    this.inlineDiagnosticsTooltip = null;
+  }
+
+
   run() {
     return true;
   }
 
   destroy() {
+    this.hideInlineDiagnosticsTooltip();
+
+    if (this._inlineDiagnosticsScrollHandler) {
+      const scroller = this.editorView?.dom?.querySelector?.('.cm-scroller');
+      scroller?.removeEventListener?.('scroll', this._inlineDiagnosticsScrollHandler);
+      this._inlineDiagnosticsScrollHandler = null;
+    }
+
     if (this.editorView) {
       this.editorView.destroy();
       const parent = this.getParentElement();

@@ -272,4 +272,100 @@ describe('CodeMirrorInstance', () => {
 
     expect(stopPropagation).not.toHaveBeenCalled();
   });
+
+  it('keeps the diagnostic message in the mark attributes for assistive technology', () => {
+    const instance = Object.create(CodeMirrorInstance.prototype);
+
+    const decorations = instance.buildInlineDiagnosticsDecorations([
+      { from: 0, to: 4, severity: 'error', message: 'Name "prin" is not defined' },
+      { from: 8, to: 12, severity: 'warning', message: 'Unused variable' },
+    ]);
+
+    expect(decorations[0].value.config.class).toBe('cm-inline-diagnostic cm-inline-diagnostic-error');
+    expect(decorations[0].value.config.attributes['aria-label']).toBe('Name "prin" is not defined');
+    expect(decorations[1].value.config.class).toBe('cm-inline-diagnostic cm-inline-diagnostic-warning');
+    expect(decorations[1].value.config.attributes['aria-label']).toBe('Unused variable');
+  });
+
+  const createTooltipInstance = () => {
+    const editorDom = document.createElement('div');
+    document.body.appendChild(editorDom);
+
+    const mark = document.createElement('span');
+    mark.className = 'cm-inline-diagnostic cm-inline-diagnostic-error';
+    mark.setAttribute('aria-label', 'Name "prin" is not defined');
+    mark.textContent = 'prin';
+    editorDom.appendChild(mark);
+
+    const instance = Object.create(CodeMirrorInstance.prototype);
+    instance.editorView = { dom: editorDom };
+    instance.inlineDiagnosticsTooltip = null;
+
+    return { instance, editorDom, mark };
+  };
+
+  it('shows and toggles the diagnostic tooltip on click and tap', () => {
+    const { instance, mark } = createTooltipInstance();
+
+    instance.handleInlineDiagnosticsClick({ target: mark });
+
+    const tooltip = document.querySelector('.cm-inline-diagnostic-tooltip');
+    expect(tooltip).toBeTruthy();
+    expect(tooltip.className).toContain('cm-inline-diagnostic-tooltip-error');
+    expect(tooltip.textContent).toBe('Name "prin" is not defined');
+    expect(tooltip.getAttribute('role')).toBe('tooltip');
+
+    instance.handleInlineDiagnosticsClick({ target: mark });
+    expect(document.querySelector('.cm-inline-diagnostic-tooltip')).toBeNull();
+  });
+
+  it('hides the tooltip when clicking outside a diagnostic mark', () => {
+    const { instance, editorDom, mark } = createTooltipInstance();
+
+    instance.handleInlineDiagnosticsClick({ target: mark });
+    expect(document.querySelector('.cm-inline-diagnostic-tooltip')).toBeTruthy();
+
+    instance.handleInlineDiagnosticsClick({ target: editorDom });
+    expect(document.querySelector('.cm-inline-diagnostic-tooltip')).toBeNull();
+  });
+
+  it('shows the tooltip on hover for hover-capable devices only', () => {
+    const { instance, mark } = createTooltipInstance();
+
+    instance.handleInlineDiagnosticsMouseOver({ target: mark });
+    expect(document.querySelector('.cm-inline-diagnostic-tooltip')).toBeNull();
+
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true })));
+
+    instance.handleInlineDiagnosticsMouseOver({ target: mark });
+    expect(document.querySelector('.cm-inline-diagnostic-tooltip')).toBeTruthy();
+
+    instance.handleInlineDiagnosticsMouseOut({ target: mark, relatedTarget: document.body });
+    expect(document.querySelector('.cm-inline-diagnostic-tooltip')).toBeNull();
+  });
+
+  it('ignores mouseout events that stay inside the same mark', () => {
+    const { instance, mark } = createTooltipInstance();
+    const child = document.createElement('span');
+    mark.appendChild(child);
+
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true })));
+
+    instance.handleInlineDiagnosticsMouseOver({ target: mark });
+    instance.handleInlineDiagnosticsMouseOut({ target: child, relatedTarget: mark });
+    expect(document.querySelector('.cm-inline-diagnostic-tooltip')).toBeTruthy();
+  });
+
+  it('hides the tooltip when diagnostics are refreshed', () => {
+    const { instance, mark } = createTooltipInstance();
+
+    instance.handleInlineDiagnosticsClick({ target: mark });
+    expect(document.querySelector('.cm-inline-diagnostic-tooltip')).toBeTruthy();
+
+    instance.setInlineDiagnosticsEffect = { of: vi.fn() };
+    instance.editorView = { dom: instance.editorView.dom, dispatch: vi.fn() };
+
+    instance.setInlineDiagnostics([]);
+    expect(document.querySelector('.cm-inline-diagnostic-tooltip')).toBeNull();
+  });
 });
