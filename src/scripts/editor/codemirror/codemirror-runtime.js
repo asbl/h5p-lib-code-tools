@@ -6,7 +6,7 @@ import { java } from '@codemirror/lang-java';
 import { javascript } from '@codemirror/lang-javascript';
 import { markdown } from '@codemirror/lang-markdown';
 import { sql, SQLite } from '@codemirror/lang-sql';
-import { bracketMatching, syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
+import { bracketMatching, syntaxHighlighting, defaultHighlightStyle, indentUnit } from '@codemirror/language';
 import { closeBrackets, autocompletion } from '@codemirror/autocomplete';
 import { oneDark } from '@codemirror/theme-one-dark';
 
@@ -32,6 +32,7 @@ const sharedCodeMirrorRuntime = {
   sql,
   SQLite,
   bracketMatching,
+  indentUnit,
   syntaxHighlighting,
   defaultHighlightStyle,
   closeBrackets,

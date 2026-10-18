@@ -38,10 +38,12 @@ vi.mock('../src/scripts/editor/codemirror/codemirror-runtime.js', () => ({
       domEventHandlers: (handlers) => handlers,
     },
     EditorState: {
+      tabSize: { of: (value) => ({ facet: 'tabSize', value }) },
       transactionFilter: { of: (value) => value },
       changeFilter: { of: (value) => value },
     },
     Transaction: { userEvent: { of: (value) => value } },
+    indentUnit: { of: (value) => ({ facet: 'indentUnit', value }) },
   }),
 }));
 
@@ -145,6 +147,22 @@ describe('CodeMirrorInstance', () => {
     expect(instance.editorView.dispatch).toHaveBeenCalledWith({ effects: effect });
   });
 
+  it('builds indent and tab-size extensions from numeric options', () => {
+    const instance = Object.create(CodeMirrorInstance.prototype);
+    instance.options = { indentUnit: 4, tabSize: 4 };
+
+    expect(instance.getIndentUnitExtension({ of: (value) => ({ value }) })).toEqual({ value: '    ' });
+    expect(instance.getTabSizeExtension({ tabSize: { of: (value) => ({ value }) } })).toEqual({ value: 4 });
+  });
+
+  it('skips indent extensions when options are omitted or invalid', () => {
+    const instance = Object.create(CodeMirrorInstance.prototype);
+    instance.options = { indentUnit: null, tabSize: 0 };
+
+    expect(instance.getIndentUnitExtension({ of: (value) => ({ value }) })).toEqual([]);
+    expect(instance.getTabSizeExtension({ tabSize: { of: (value) => ({ value }) } })).toEqual([]);
+  });
+
   it('returns normalized code text and updates parent sizing helpers', () => {
     const parent = document.createElement('div');
     const instance = Object.create(CodeMirrorInstance.prototype);
@@ -181,6 +199,34 @@ describe('CodeMirrorInstance', () => {
     expect(instance.isConsoleErrorLine('[!>] > boom')).toBe(true);
     expect(instance.isConsoleErrorLine('!> boom')).toBe(true);
     expect(instance.isConsoleErrorLine('[runner] > ok')).toBe(false);
+  });
+
+  it('focuses user code lines with preCode offset applied', () => {
+    const dispatch = vi.fn();
+    const focus = vi.fn();
+    const line = vi.fn((lineNumber) => ({ from: lineNumber * 10 }));
+    const instance = Object.create(CodeMirrorInstance.prototype);
+
+    instance.preCode = 'import math\nprint("setup")\n';
+    instance.editorView = {
+      dispatch,
+      focus,
+      state: {
+        doc: {
+          lines: 20,
+          line,
+        },
+      },
+    };
+
+    instance.focusLine(3);
+
+    expect(line).toHaveBeenCalledWith(5);
+    expect(dispatch).toHaveBeenCalledWith({
+      selection: { anchor: 50 },
+      scrollIntoView: true,
+    });
+    expect(focus).toHaveBeenCalledTimes(1);
   });
 
   it('resolves its parent element from the DOM by uid', () => {

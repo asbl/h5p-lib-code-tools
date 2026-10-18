@@ -24,6 +24,8 @@ export default class CodeMirrorInstance {
       isConsole: false,
       languageConfig: null,
       completionConfig: null,
+      indentUnit: null,
+      tabSize: null,
       preCode: '',
       postCode: '',
       ...options
@@ -107,6 +109,7 @@ export default class CodeMirrorInstance {
       indentWithTab,
       keymap,
       defaultKeymap,
+      indentUnit,
     } = runtime;
 
     const parent = this.getParentElement();
@@ -121,6 +124,8 @@ export default class CodeMirrorInstance {
         bracketMatching(),
         closeBrackets(),
         history(),
+        this.getIndentUnitExtension(indentUnit),
+        this.getTabSizeExtension(EditorState),
         this.languageCompartment.of(!this.isConsole ? this.getLanguageExtension() : []),
         this.themeCompartment.of(this.getThemeExtension()),
         this.completionCompartment.of(this.getCompletionExtension()),
@@ -147,6 +152,26 @@ export default class CodeMirrorInstance {
     this.shieldPrintableKeypresses();
     this.shieldEditorKeyboardShortcuts();
     if (!this.isConsole) this.setupRunShortcut();
+  }
+
+  getIndentUnitExtension(indentUnitFacet) {
+    const indentSize = Number(this.options.indentUnit);
+
+    if (!Number.isInteger(indentSize) || indentSize < 1) {
+      return [];
+    }
+
+    return indentUnitFacet.of(' '.repeat(indentSize));
+  }
+
+  getTabSizeExtension(EditorState) {
+    const tabSize = Number(this.options.tabSize);
+
+    if (!Number.isInteger(tabSize) || tabSize < 1 || !EditorState?.tabSize?.of) {
+      return [];
+    }
+
+    return EditorState.tabSize.of(tabSize);
   }
 
   /**
@@ -399,6 +424,28 @@ export default class CodeMirrorInstance {
 
   focus() {
     this.editorView?.focus();
+  }
+
+  focusLine(lineNumber) {
+    if (!this.editorView?.state?.doc || !Number.isFinite(Number(lineNumber))) {
+      this.focus();
+      return;
+    }
+
+    const userLine = Math.max(1, Number(lineNumber));
+    const preCodeLines = this.preCode ? this.preCode.split(/\r?\n/).length - 1 : 0;
+    const documentLine = Math.min(
+      Math.max(1, userLine + preCodeLines),
+      this.editorView.state.doc.lines,
+    );
+    const position = this.editorView.state.doc.line(documentLine).from;
+
+    this.editorView.dispatch({
+      selection: { anchor: position },
+      scrollIntoView: true,
+    });
+
+    this.editorView.focus?.();
   }
 
   setInlineDiagnostics(diagnostics = []) {
