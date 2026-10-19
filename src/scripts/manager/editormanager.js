@@ -122,6 +122,8 @@ export default class EditorManager {
     this.codeMirrorCdnUrl = this.workspaceOptions.codeMirrorCdnUrl;
     this.codeMirrorLanguageConfig = workspaceOptions?.codeMirrorLanguageConfig || null;
     this.codeMirrorCompletionConfig = workspaceOptions?.codeMirrorCompletionConfig || null;
+    this.indentUnit = workspaceOptions?.indentUnit ?? null;
+    this.tabSize = workspaceOptions?.tabSize ?? null;
   }
 
   /**
@@ -940,6 +942,8 @@ export default class EditorManager {
       theme: this.theme,
       languageConfig: this.codeMirrorLanguageConfig,
       completionConfig: this.codeMirrorCompletionConfig,
+      indentUnit: this.indentUnit,
+      tabSize: this.tabSize,
     };
 
     const shouldUseBlockly = this.editorMode === 'blocks' || this.editorMode === 'both';

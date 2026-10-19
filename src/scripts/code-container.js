@@ -283,6 +283,8 @@ export default class CodeContainer {
           blocklyWorkspaceState: options?.blocklyWorkspaceState ?? null,
           blocklyPackages,
           codeContainer: this,
+          indentUnit: options?.indentUnit ?? null,
+          tabSize: options?.tabSize ?? null,
           onOpenFileManager: () => this.showFileManagerPage(),
           onCloseFileManager: () => this.showCodePage?.() || this.getPageManager().showPage('code'),
         },
