@@ -12,6 +12,8 @@ import StorageManager from './manager/storagemanager.js';
 import UIRegistryManager from './manager/uiregistrymanager.js';
 import { createLibCodeToolsL10n } from './services/libcodetools-l10n';
 import WorkspaceAutosave from './services/workspace-autosave.js';
+import ProjectBundleService from './services/project-bundle.js';
+import DefaultImagePreloadService from './services/default-image-preload.js';
 
 
 /**
@@ -67,6 +69,9 @@ export default class CodeContainer {
     };
 
     this.resizeActionHandler = options.resizeActionHandler || (() => { });
+
+    this.projectBundleService = new ProjectBundleService(this);
+    this.defaultImagePreloadService = new DefaultImagePreloadService(this);
   }
 
   getStateManager(_parent, _options) {
@@ -599,27 +604,13 @@ export default class CodeContainer {
    * @param {string} fileName - Image file name.
    * @returns {string} Best-effort MIME type.
    */
+  /**
+   * Resolves an image MIME type from a file name's extension.
+   * @param {string} fileName - Image file name.
+   * @returns {string} Resolved MIME type.
+   */
   getMimeTypeFromImageName(fileName = '') {
-    const extension = String(fileName || '').toLowerCase().match(/\.[a-z0-9]+$/)?.[0] || '';
-
-    switch (extension) {
-      case '.jpg':
-      case '.jpeg':
-        return 'image/jpeg';
-      case '.gif':
-        return 'image/gif';
-      case '.bmp':
-        return 'image/bmp';
-      case '.svg':
-        return 'image/svg+xml';
-      case '.webp':
-        return 'image/webp';
-      case '.avif':
-        return 'image/avif';
-      case '.png':
-      default:
-        return 'image/png';
-    }
+    return this.defaultImagePreloadService.getMimeTypeFromImageName(fileName);
   }
 
   /**
@@ -629,18 +620,7 @@ export default class CodeContainer {
    * @returns {string} Image file name.
    */
   getDefaultImageFileName(entry, index) {
-    const explicitName = String(entry?.fileName || entry?.name || '').trim();
-
-    if (explicitName) {
-      return explicitName;
-    }
-
-    const pathTail = String(entry?.path || '').split('/').pop()?.trim() || '';
-    if (pathTail) {
-      return pathTail;
-    }
-
-    return `image_${index + 1}.png`;
+    return this.defaultImagePreloadService.getDefaultImageFileName(entry, index);
   }
 
   /**
@@ -648,63 +628,7 @@ export default class CodeContainer {
    * @returns {Promise<void>} Resolves once default images were imported.
    */
   async preloadDefaultImages() {
-    const imageManager = this.getImageManager(this.parent, this.options);
-
-    if (!imageManager?.isEnabled?.()) {
-      return;
-    }
-
-    if (imageManager.getFiles().length > 0) {
-      return;
-    }
-
-    const entries = Array.isArray(this.options?.defaultImages) ? this.options.defaultImages : [];
-
-    if (!entries.length) {
-      return;
-    }
-
-    const importedEntries = [];
-
-    for (let index = 0; index < entries.length; index += 1) {
-      const entry = entries[index] || {};
-      const path = String(entry?.path || '').trim();
-
-      if (!path) {
-        continue;
-      }
-
-      const resolvedPath = (typeof H5P?.getPath === 'function')
-        ? H5P.getPath(path, this.options?.contentId)
-        : path;
-
-      try {
-        const response = await fetch(resolvedPath);
-
-        if (!response?.ok) {
-          continue;
-        }
-
-        const bytes = new Uint8Array(await response.arrayBuffer());
-        const fileName = this.getDefaultImageFileName(entry, index);
-        const mimeType = response.headers?.get?.('content-type')
-          || this.getMimeTypeFromImageName(fileName);
-
-        importedEntries.push({
-          name: fileName,
-          mimeType,
-          size: bytes.byteLength,
-          data: imageManager.bytesToBase64(bytes),
-        });
-      }
-      catch (_) {
-        // Ignore unavailable default assets and continue with remaining images.
-      }
-    }
-
-    if (importedEntries.length > 0) {
-      imageManager.replaceFiles(importedEntries);
-    }
+    return this.defaultImagePreloadService.preloadDefaultImages();
   }
 
   /**
@@ -831,20 +755,13 @@ export default class CodeContainer {
    * Indicates whether the current project must be stored as a bundle.
    * @returns {boolean} True if the current project contains multiple files.
    */
+  /**
+   * Checks whether the current project has anything worth bundling beyond
+   * the single entry file (additional visible source files, images, sounds).
+   * @returns {boolean} True if a project bundle would have content.
+   */
   hasProjectBundleContents() {
-    if (!this.supportsProjectStorage()) {
-      return false;
-    }
-
-    const workspace = this.getWorkspaceSnapshot();
-    const hasAdditionalSourceFiles = Array.isArray(workspace?.files)
-      && workspace.files.some((file) => file.isEntry !== true && file.visible !== false);
-    const hasImages = this.getImageManager()?.isEnabled?.() === true
-      && this.getImageManager().getFiles().length > 0;
-    const hasSounds = this.getSoundManager()?.isEnabled?.() === true
-      && this.getSoundManager().getFiles().length > 0;
-
-    return hasAdditionalSourceFiles || hasImages || hasSounds;
+    return this.projectBundleService.hasProjectBundleContents();
   }
 
   /**
@@ -852,42 +769,7 @@ export default class CodeContainer {
    * @returns {object|null} Serializable project bundle or null.
    */
   getProjectBundle() {
-    if (!this.hasProjectBundleContents()) {
-      return null;
-    }
-
-    const workspace = this.getWorkspaceSnapshot();
-
-    if (!workspace) {
-      return null;
-    }
-
-    return {
-      type: this.options?.projectBundleType || this.getDefaultProjectBundleType(),
-      version: 1,
-      entryFileName: workspace.entryFileName,
-      activeFileName: workspace.files.some((file) => (
-        file.name === workspace.activeFileName && file.visible !== false
-      ))
-        ? workspace.activeFileName
-        : workspace.entryFileName,
-      sourceFiles: workspace.files
-        .filter((file) => file.isEntry === true || file.visible !== false)
-        .map((file) => ({
-          name: file.name,
-          code: file.code,
-          visible: file.visible !== false,
-          editable: file.editable !== false,
-          isEntry: file.isEntry === true,
-          blankValues: file.blankValues ? { ...file.blankValues } : null,
-        })),
-      images: this.getImageManager()?.isEnabled?.() === true
-        ? this.getImageManager().serializeFiles()
-        : [],
-      sounds: this.getSoundManager()?.isEnabled?.() === true
-        ? this.getSoundManager().serializeFiles()
-        : [],
-    };
+    return this.projectBundleService.getProjectBundle();
   }
 
   /**
@@ -896,50 +778,7 @@ export default class CodeContainer {
    * @returns {boolean} True if the bundle was applied.
    */
   applyProjectBundle(projectBundle) {
-    if (!this.supportsProjectStorage()) {
-      return false;
-    }
-
-    if (projectBundle?.type !== (this.options?.projectBundleType || this.getDefaultProjectBundleType())) {
-      return false;
-    }
-
-    if (!Array.isArray(projectBundle?.sourceFiles) || projectBundle.sourceFiles.length === 0) {
-      return false;
-    }
-
-    const workspaceFiles = Array.isArray(projectBundle?.sourceFiles)
-      ? projectBundle.sourceFiles
-        .filter((file) => typeof file?.name === 'string' && file.name.trim() !== '')
-        .map((file) => ({
-          name: file.name,
-          code: typeof file.code === 'string' ? file.code : '',
-          visible: file.visible !== false,
-          editable: file.editable !== false,
-          isEntry: file.isEntry === true,
-          blankValues: file.blankValues ? { ...file.blankValues } : null,
-        }))
-      : [];
-
-    if (workspaceFiles.length === 0) {
-      return false;
-    }
-
-    this.setWorkspaceSnapshot({
-      entryFileName: projectBundle.entryFileName || this.options?.entryFileName || this.getDefaultEntryFileName(),
-      activeFileName: projectBundle.activeFileName,
-      files: workspaceFiles,
-    });
-
-    if (this.getImageManager()?.isEnabled?.() === true) {
-      this.getImageManager().replaceFiles(Array.isArray(projectBundle.images) ? projectBundle.images : []);
-    }
-
-    if (this.getSoundManager()?.isEnabled?.() === true) {
-      this.getSoundManager().replaceFiles(Array.isArray(projectBundle.sounds) ? projectBundle.sounds : []);
-    }
-
-    return true;
+    return this.projectBundleService.applyProjectBundle(projectBundle);
   }
 
   /**

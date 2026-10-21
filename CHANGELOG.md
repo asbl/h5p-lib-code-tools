@@ -7,6 +7,20 @@ that period. From here on, add an entry under **Unreleased** with each
 notable change, then move it under a version heading when `library.json` is
 bumped.
 
+## [6.105.0]
+
+### Changed
+
+- `getCdnPackageVersion(packageName, options)` now accepts an optional
+  `devDependencies` map and `exact` flag, so other libraries (e.g.
+  PythonQuestion) can reuse this resolver for a package pinned in their own
+  `package.json` instead of reimplementing the same exact-pin validation.
+- Extracted `hasProjectBundleContents`/`getProjectBundle`/`applyProjectBundle`
+  into `services/project-bundle.js` and `preloadDefaultImages` (plus its MIME
+  type/file name helpers) into `services/default-image-preload.js`, out of
+  `CodeContainer`. No behavior change; `CodeContainer` keeps the same public
+  methods as thin delegates.
+
 ## [6.95.0]
 
 ### Added
