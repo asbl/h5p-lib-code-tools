@@ -338,6 +338,10 @@ export default class EditorManager {
     this._editorInstance?.setInlineDiagnostics?.(diagnostics);
   }
 
+  setRuntimeError(error = null) {
+    return this._editorInstance?.setRuntimeError?.(error) ?? false;
+  }
+
   getWorkspaceSnapshot() {
     this.persistActiveFileCode();
     return this.cloneWorkspace(this._workspace);

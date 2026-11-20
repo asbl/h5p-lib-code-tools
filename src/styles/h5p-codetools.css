@@ -505,6 +505,7 @@
 
 .h5p-cm-editor .cm-inline-diagnostic-error {
   text-decoration-color: #d32f2f;
+  background-color: rgba(211, 47, 47, 0.12);
 }
 
 .h5p-cm-editor .cm-inline-diagnostic-warning {

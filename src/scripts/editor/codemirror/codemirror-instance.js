@@ -95,6 +95,15 @@ export default class CodeMirrorInstance {
     );
   }
 
+  /**
+   * SQL statements are often written on one long line, so they wrap instead of scrolling sideways.
+   * @returns {boolean} True if long lines should wrap.
+   */
+  shouldWrapLines() {
+    return this.options.lineWrapping === true
+      || (!this.isConsole && String(this.codingLanguage).toLowerCase() === 'sql');
+  }
+
   /** --- Editor creation --- */
   createEditor() {
     const runtime = getCodeMirrorRuntime();
@@ -121,6 +130,7 @@ export default class CodeMirrorInstance {
       doc: fullDoc,
       extensions: [
         this.options.showLineNumbers ? lineNumbers() : [],
+        this.shouldWrapLines() ? EditorView.lineWrapping : [],
         bracketMatching(),
         closeBrackets(),
         history(),
@@ -130,7 +140,20 @@ export default class CodeMirrorInstance {
         this.themeCompartment.of(this.getThemeExtension()),
         this.completionCompartment.of(this.getCompletionExtension()),
         keymap.of([
-          indentWithTab,
+          // Escape releases the Tab key, so keyboard users can leave the editor
+          // (WCAG 2.1.2 no keyboard trap). Any other key re-enables indenting.
+          {
+            key: 'Escape',
+            run: () => {
+              this.tabLeavesEditor = true;
+              return false;
+            },
+          },
+          {
+            key: 'Tab',
+            run: (view) => (this.tabLeavesEditor ? false : indentWithTab.run(view)),
+            shift: (view) => (this.tabLeavesEditor ? false : indentWithTab.shift(view)),
+          },
           ...historyKeymap,
           ...defaultKeymap,
         ]),
@@ -154,6 +177,7 @@ export default class CodeMirrorInstance {
     this.shieldPrintableKeypresses();
     this.shieldEditorKeyboardShortcuts();
     if (!this.isConsole) this.setupRunShortcut();
+    this.setupTabEscape();
   }
 
   getIndentUnitExtension(indentUnitFacet) {
@@ -317,6 +341,18 @@ export default class CodeMirrorInstance {
     this._resizeObserver.observe(parent);
   }
 
+  setupTabEscape() {
+    this.tabLeavesEditor = false;
+    this.editorView.dom.addEventListener('keydown', (event) => {
+      if (!['Tab', 'Shift', 'Escape'].includes(event.key)) {
+        this.tabLeavesEditor = false;
+      }
+    });
+    this.editorView.dom.addEventListener('focusout', () => {
+      this.tabLeavesEditor = false;
+    });
+  }
+
   setupRunShortcut() {
     this.editorView.dom.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -451,10 +487,77 @@ export default class CodeMirrorInstance {
   }
 
   setInlineDiagnostics(diagnostics = []) {
-    this.inlineDiagnostics = Array.isArray(diagnostics)
+    this.externalDiagnostics = Array.isArray(diagnostics)
       ? diagnostics.filter((diagnostic) => diagnostic && typeof diagnostic.from === 'number' && typeof diagnostic.to === 'number')
-        .sort((left, right) => left.from - right.from || left.to - right.to)
       : [];
+    this.applyInlineDiagnostics();
+  }
+
+  /**
+   * Marks the place of a runtime error in the editor. The mark is kept apart
+   * from linter diagnostics, so it survives their updates, and disappears as
+   * soon as the learner edits the code.
+   * @param {{line?: number, token?: string, message?: string}|null} error Error location or null to clear.
+   * @returns {boolean} True if a range could be marked.
+   */
+  setRuntimeError(error = null) {
+    this.runtimeErrorDiagnostic = null;
+
+    const doc = this.editorView?.state?.doc;
+    if (error && doc) {
+      const range = this.resolveRuntimeErrorRange(doc, error);
+      if (range) {
+        this.runtimeErrorDiagnostic = {
+          ...range,
+          severity: 'error',
+          message: typeof error.message === 'string' ? error.message : '',
+        };
+      }
+    }
+
+    this.applyInlineDiagnostics();
+    return this.runtimeErrorDiagnostic !== null;
+  }
+
+  /**
+   * Resolves a line number (relative to the learner code) or a token to a document range.
+   * @param {object} doc CodeMirror document.
+   * @param {{line?: number, token?: string}} error Error location.
+   * @returns {{from: number, to: number}|null} Range or null.
+   */
+  resolveRuntimeErrorRange(doc, error) {
+    if (error.token) {
+      const text = doc.toString();
+      const start = this.preCodeLength || 0;
+      const end = text.length - (this.postCodeLength || 0);
+      const index = text.slice(start, end).toLowerCase().indexOf(String(error.token).toLowerCase());
+      if (index >= 0) {
+        return { from: start + index, to: start + index + String(error.token).length };
+      }
+    }
+
+    const userLine = Number(error.line);
+    if (!Number.isInteger(userLine) || userLine < 1) {
+      return null;
+    }
+
+    const preCodeLines = this.preCode ? this.preCode.split(/\r?\n/).length - 1 : 0;
+    const documentLine = userLine + preCodeLines;
+    if (documentLine > doc.lines) {
+      return null;
+    }
+
+    const line = doc.line(documentLine);
+    const indent = line.text.length - line.text.trimStart().length;
+    const from = line.from + indent;
+    return line.to > from ? { from, to: line.to } : null;
+  }
+
+  applyInlineDiagnostics() {
+    this.inlineDiagnostics = [
+      ...(this.externalDiagnostics || []),
+      ...(this.runtimeErrorDiagnostic ? [this.runtimeErrorDiagnostic] : []),
+    ].sort((left, right) => left.from - right.from || left.to - right.to);
 
     this.hideInlineDiagnosticsTooltip();
 
@@ -689,6 +792,10 @@ export default class CodeMirrorInstance {
         }
 
         if (tr.docChanged) {
+          if (this.runtimeErrorDiagnostic) {
+            this.runtimeErrorDiagnostic = null;
+            this.inlineDiagnostics = this.externalDiagnostics || [];
+          }
           return this.buildInlineDiagnosticsDecorations(this.inlineDiagnostics);
         }
 
